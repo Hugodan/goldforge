@@ -184,12 +184,24 @@ export function exits(id) {
   const sale = saleBreakdown(id);
   if (sale) out.push({ kind: 'AH', value: sale.net, sale });
   const n = netSale(id, S().neutral);
-  if (n !== null && item(id).bind !== 1) out.push({ kind: 'Neutral AH', value: n, sale: saleBreakdown(id, S().neutral) });
+  if (n !== null && item(id).bind !== 1) {
+    const spdN = price(S().neutral, id)?.spd;
+    // The neutral house is thin: one overpriced listing is not a price you can sell at.
+    const real = spdN !== null && spdN !== undefined && spdN >= S().neutralMinSales;
+    out.push({ kind: 'Neutral AH', value: n, sale: saleBreakdown(id, S().neutral), unproven: !real });
+  }
   const de = deValue(id);
   if (de) out.push({ kind: 'Disenchant', value: de.ev, de });
   const it = item(id);
   if (it.sell > 0) out.push({ kind: 'Vendor', value: it.sell });
-  return out.sort((a, b) => b.value - a.value);
+  return out.sort((a, b) => (a.unproven - b.unproven) || (b.value - a.value));
+}
+
+/** Thin market: few listings and no measured sales, so the floor is just someone's asking price. */
+export function thinMarket(id, house = S().house) {
+  const p = price(house, id);
+  if (!p) return false;
+  return (p.n ?? 0) <= 2 && !(p.spd > 0);
 }
 
 export function evaluateRecipe(r, crafts = 1) {
@@ -200,7 +212,7 @@ export function evaluateRecipe(r, crafts = 1) {
   const missing = reagents.filter(x => x.unit === null);
   const cost = missing.length ? null : reagents.reduce((t, x) => t + x.total, 0);
   const ex = exits(r.i);
-  const best = ex[0] || null;
+  const best = ex.find(e => !e.unproven) || null;
   const makes = r.m || 1;
   const revenue = best ? best.value * makes : null;
   const profit = cost !== null && revenue !== null ? revenue - cost : null;
@@ -213,6 +225,7 @@ export function evaluateRecipe(r, crafts = 1) {
     margin: profit !== null && cost ? profit / cost : null,
     spd, daily, market: p, known: recipeKnown(r),
     bop: item(r.i).bind === 1,
+    thin: best?.kind === 'AH' && thinMarket(r.i),
   };
 }
 
@@ -312,7 +325,7 @@ export function neutralFlips({ minProfit = 2000, minRoi = 0.1, limit = 150 } = {
     const a = price(s.house, id), n = price(s.neutral, id);
     // Alliance -> neutral
     const toN = netSale(id, s.neutral);
-    if (toN !== null && a.min) {
+    if (toN !== null && a.min && (n.spd === null || n.spd === undefined || n.spd >= s.neutralMinSales)) {
       const profit = toN - a.min;
       if (profit >= minProfit && profit / a.min >= minRoi) {
         out.push({ id, dir: 'Alliance → Neutral', buy: a.min, sell: listPrice(id, s.neutral), net: toN, profit,
@@ -347,7 +360,7 @@ export function bagAdvice() {
       const ev = evaluateRecipe(r);
       if (ev.profit !== null && ev.profit > 0 && (!craft || ev.profit > craft.profit)) craft = ev;
     }
-    const best = ex[0];
+    const best = ex.find(e => !e.unproven);
     rows.push({ id, it, n, exits: ex, best, craft, value: best ? best.value * n : 0 });
   }
   return rows.sort((a, b) => b.value - a.value);

@@ -165,11 +165,10 @@ def item_from_bnet(body):
 
 
 def icon_from_media(body):
+    """Full icon URL as Blizzard returns it (Forever icon URLs use file ids, not names)."""
     for a in (body or {}).get("assets") or []:
         if a.get("key") == "icon" and a.get("value"):
-            m = re.search(r"/([^/]+)\.(?:jpg|png)$", a["value"])
-            if m:
-                return m.group(1)
+            return a["value"]
     return None
 
 
@@ -190,7 +189,7 @@ def fill_missing_items(bnet, items, wanted, budget, log=print):
 
 
 def fill_icons(bnet, icons, wanted, budget, log=print):
-    todo = [i for i in sorted(wanted) if str(i) not in icons]
+    todo = [i for i in sorted(wanted) if str(i) not in icons or (icons[str(i)] and not str(icons[str(i)]).startswith("http"))]
     for iid in todo[:budget]:
         status, _h, body = bnet.item_media(iid)
         icons[str(iid)] = icon_from_media(body) if status == 200 else ""

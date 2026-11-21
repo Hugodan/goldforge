@@ -162,7 +162,7 @@ def test_end_to_end():
         assert items["8170"][0] == "Rugged Leather" and items["8170"][3] == 7
         assert items["99999"][0] == "Fake 99999"          # filled from the Battle.net item API
         icons = json.load(open(os.path.join(out, "icons.json")))
-        assert icons.get("8170") == "icon_8170"
+        assert icons.get("8170") == "https://render.worldofwarcraft.com/eu/icons/56/icon_8170.jpg"
 
         # same snapshot again -> 304, nothing to publish
         bnet2 = Bnet("id", "secret", "eu", opener=fake)

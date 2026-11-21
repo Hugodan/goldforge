@@ -97,7 +97,8 @@ export const qualityClass = q => `q-${QUALITY[q] || 'common'}`;
 
 export function iconUrl(id) {
   const n = DB.icons[id];
-  return n ? `https://render.worldofwarcraft.com/eu/icons/56/${n}.jpg` : null;
+  if (!n) return null;
+  return String(n).startsWith('http') ? n : `https://render.worldofwarcraft.com/eu/icons/56/${n}.jpg`;
 }
 
 export function price(house, id) {

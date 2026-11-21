@@ -72,7 +72,10 @@ def fetch_house(bnet, ruleset, house_id, last_modified):
     lm = hdrs.get("last-modified") or c_hdrs.get("last-modified")
     ts = auctions.parse_http_date(lm) or int(time.time())
     listings = auctions.compact_listings(body, c_body)
-    return {"listings": listings, "lm": lm, "ts": ts, "name": (body or {}).get("name")}
+    name = (body or {}).get("name")
+    if isinstance(name, dict):
+        name = name.get("en_GB") or name.get("en_US") or next(iter(name.values()), None)
+    return {"listings": listings, "lm": lm, "ts": ts, "name": name}
 
 
 def update_sales(state_dir, house_id, snap, rel_ids):

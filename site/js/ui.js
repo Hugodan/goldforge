@@ -8,7 +8,7 @@ export function icon(id, size = '') {
   const url = iconUrl(id);
   const q = it.q >= 2 ? ` q${it.q}` : '';
   const letter = esc((it.name || '?').replace(/^\W+/, '')[0] || '?');
-  return `<span class="icon ${size}${q}">${url ? `<img src="${url}" alt="" loading="lazy" onerror="this.remove()">` : ''}${url ? '' : letter}</span>`;
+  return `<span class="icon ${size}${q}"><span class="il">${letter}</span>${url ? `<img src="${url}" alt="" loading="lazy" onerror="this.remove()">` : ''}</span>`;
 }
 
 export function itemLink(id, { count = null, size = 'sm', bracket = false } = {}) {

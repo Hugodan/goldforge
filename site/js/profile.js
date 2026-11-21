@@ -14,6 +14,7 @@ export const DEFAULTS = {
   ahCut: 0.05,
   neutralCut: 0.15,
   neutralDepositMult: 5,
+  neutralMinSales: 0.5,      // only count the neutral AH as an exit where it sells at least this many a day
   postStack: 20,             // units per commodity listing
   sellThroughCommodity: 0.85,
   sellThroughGear: 0.40,

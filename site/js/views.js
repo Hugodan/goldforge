@@ -9,7 +9,7 @@ const st = {};   // per-view UI state (sort, filters)
 const view = k => (st[k] ||= {});
 
 const exitTag = e => !e ? '<span class="na">no market</span>'
-  : `<span class="tag ${e.kind === 'Disenchant' ? 'gold' : e.kind === 'Vendor' ? '' : 'good'}">${e.kind}</span>`;
+  : `<span class="tag ${e.kind === 'Disenchant' ? 'gold' : e.kind === 'Vendor' ? '' : e.unproven ? 'warn' : 'good'}">${e.kind}</span>${e.unproven ? ' <span class="tag warn" title="Too few sales on the neutral house to count on this price">unproven</span>' : ''}`;
 const profitCell = v => v === null || v === undefined ? '<span class="na">—</span>' : `<span class="${v >= 0 ? 'good' : 'bad'}">${money(v, { sign: true })}</span>`;
 
 function recipeTags(ev) {
@@ -20,6 +20,7 @@ function recipeTags(ev) {
   if (ev.r.new) t.push('<span class="tag gold">new in Forever</span>');
   if (ev.bop) t.push('<span class="tag bad">BoP</span>');
   if (ev.missing.length) t.push('<span class="tag bad">unpriced reagent</span>');
+  if (ev.thin) t.push('<span class="tag warn" title="2 or fewer listings and no measured sales: the price is just an asking price">thin market</span>');
   return t.join(' ');
 }
 
@@ -28,7 +29,9 @@ export function board(el, ctx) {
   const s = S();
   const rows = C.allRecipeRows('leatherworking').filter(r => r.profit !== null && r.profit > 0 && !r.missing.length && r.known !== false);
   const byDaily = [...rows].filter(r => r.daily).sort((a, b) => b.daily - a.daily);
-  const best = byDaily[0] || [...rows].sort((a, b) => b.profit - a.profit)[0];
+  const byProfit = [...rows].filter(r => !r.thin).sort((a, b) => b.profit - a.profit);
+  const noSales = byDaily.length === 0;
+  const best = byDaily[0] || byProfit[0];
   const tiers = C.skinTierValues();
   const specials = tiers.flatMap(t => t.specials).sort((a, b) => b.perHour - a.perHour);
   const farmBest = [...tiers, ...specials].sort((a, b) => b.perHour - a.perHour)[0];
@@ -49,7 +52,8 @@ export function board(el, ctx) {
     amt: `${money(farmBest.perHour, { short: true })}<span class="muted small"> / hour</span>`, id: farmBest.item || farmBest.out?.[1]?.[0], go: '#skinning' });
   if (de[0]) moves.push({ kind: 'Buy & disenchant', name: item(de[0].id).name, amt: `${profitCell(de[0].profit)}<span class="muted small"> each</span>`, id: de[0].id, go: '#disenchant' });
   if (nf[0]) moves.push({ kind: nf[0].dir, name: item(nf[0].id).name, amt: `${profitCell(nf[0].profit)}<span class="muted small"> each</span>`, id: nf[0].id, go: '#neutral' });
-  for (const r of byDaily.slice(1, 4)) moves.push({ kind: 'Craft', name: item(r.r.i).name, amt: `${money(r.daily, { short: true })}<span class="muted small"> / day</span>`, id: r.r.i, recipe: r.r.s });
+  if (noSales) for (const r of byProfit.slice(1, 4)) moves.push({ kind: 'Craft', name: item(r.r.i).name, amt: `${profitCell(r.profit)}<span class="muted small"> each</span>`, id: r.r.i, recipe: r.r.s });
+  else for (const r of byDaily.slice(1, 4)) moves.push({ kind: 'Craft', name: item(r.r.i).name, amt: `${money(r.daily, { short: true })}<span class="muted small"> / day</span>`, id: r.r.i, recipe: r.r.s });
   if (P.addon()) moves.push({ kind: 'Your bags & bank', name: `${bags.length} item types`, amt: money(bagWorth, { short: true }), go: '#bags' });
 
   const key = [8170, 4304, 15417, 8171, 15407, 249427, 16204, 14344].filter(id => price(s.house, id));
@@ -67,7 +71,8 @@ export function board(el, ctx) {
           <div class="grid g3" style="margin-top:8px">
             <div class="stat"><div class="label">Profit per craft</div><div class="val">${profitCell(best.profit)}</div></div>
             <div class="stat"><div class="label">Margin</div><div class="val">${pct(best.margin)}</div></div>
-            <div class="stat"><div class="label">At ${pct(s.marketShare)} of ~${num(best.spd, 1)} sales/day</div><div class="val">${money(best.daily, { short: true })}</div></div>
+            ${noSales ? `<div class="stat"><div class="label">Listed now</div><div class="val">${num(best.market?.qty)}</div><div class="small muted">Sales per day appear after about 6 hours of snapshots</div></div>`
+              : `<div class="stat"><div class="label">At ${pct(s.marketShare)} of ~${num(best.spd, 1)} sales/day</div><div class="val">${money(best.daily, { short: true })}</div></div>`}
           </div>
           <p class="small muted" style="margin-top:8px">Best exit: ${exitTag(best.best)} · cost ${money(best.cost)} · <a href="#" data-recipe="${best.r.s}">see every cost</a></p>
           ${top5.length > 1 ? `<div class="coinmeter" aria-label="Daily gold potential of the top five crafts">${meter}</div>` : ''}
@@ -99,8 +104,9 @@ export function board(el, ctx) {
 // ============================================================================= LEATHERWORKING
 export function leatherworking(el, ctx) {
   const v = view('lw');
-  v.sortKey ??= 'daily'; v.filter ??= 'profitable'; v.q ??= '';
+  v.filter ??= 'profitable'; v.q ??= '';
   const rows = C.allRecipeRows('leatherworking');
+  v.sortKey ??= rows.some(r => r.daily) ? 'daily' : 'profit';
   const known = P.knownRecipes();
   const shown = rows.filter(r => {
     if (v.q && !item(r.r.i).name.toLowerCase().includes(v.q.toLowerCase()) && !r.r.n.toLowerCase().includes(v.q.toLowerCase())) return false;
@@ -112,7 +118,7 @@ export function leatherworking(el, ctx) {
   const profitable = rows.filter(r => r.profit > 0 && !r.missing.length);
   const cols = [
     { key: 'name', label: 'Craft', sort: r => item(r.r.i).name, render: r => `${itemLink(r.r.i, { count: r.makes > 1 ? r.makes : null })}<div class="small">${recipeTags(r)}</div>` },
-    { key: 'skill', label: 'Skill', num: true, sort: r => r.r.l || r.r.y, render: r => `${r.r.l || '—'}<span class="muted small"> / ${r.r.y || '?'}</span>` },
+    { key: 'skill', label: 'Skill', num: true, sort: r => (r.r.l > 1 ? r.r.l : r.r.y), render: r => `${r.r.l > 1 ? r.r.l : '—'}<span class="muted small"> / ${r.r.y || '?'}</span>` },
     { key: 'cost', label: 'Cost', num: true, render: r => money(r.cost) },
     { key: 'exit', label: 'Best exit', sort: r => r.best?.value, render: r => r.best ? `${exitTag(r.best)} ${money(r.best.value * r.makes)}` : exitTag(null) },
     { key: 'profit', label: 'Profit', num: true, render: r => profitCell(r.profit) },
@@ -493,6 +499,7 @@ export function setup(el, ctx) {
           <label class="field">House cut, faction AH (%)${numIn('ahCut', 0.5, 100)}</label>
           <label class="field">House cut, neutral AH (%)${numIn('neutralCut', 0.5, 100)}</label>
           <label class="field">Neutral deposit multiplier${numIn('neutralDepositMult', 0.5)}</label>
+          <label class="field">Count the neutral AH where it sells ≥ (per day)${numIn('neutralMinSales', 0.5)}</label>
           <label class="field">Units per commodity listing${numIn('postStack')}</label>
           <label class="field">Commodity sell-through (%)${numIn('sellThroughCommodity', 1, 100)}</label>
           <label class="field">Gear sell-through (%)${numIn('sellThroughGear', 1, 100)}</label>
@@ -594,7 +601,7 @@ export function recipeDrawer(body, spell, ctx) {
   body.innerHTML = `
     <div style="display:flex;gap:14px;align-items:center;margin-right:48px">${icon(r.i, 'lg')}<div>
       <h2 class="${'q-' + ['poor','common','uncommon','rare','epic','legendary'][prod.q]}" style="color:inherit">${esc(prod.name)}</h2>
-      <div class="small muted">Leatherworking · learn ${r.l || '?'} · yellow ${r.y || '?'} · grey ${r.g || '?'} · ${r.src === 'item' ? `pattern${r.patn ? `: ${esc(r.patn)}` : ''}` : esc(r.src || 'trainer')}</div>
+      <div class="small muted">Leatherworking · learn ${r.l > 1 ? r.l : '?'} · yellow ${r.y || '?'} · grey ${r.g || '?'} · ${r.src === 'item' ? `pattern${r.patn ? `: ${esc(r.patn)}` : ''}` : esc(r.src || 'trainer')}</div>
       <div class="small">${recipeTags(ev)}</div></div></div>
     <div class="toolbar section"><label class="field">Crafts<input id="crafts" type="number" min="1" max="500" value="${crafts}" style="width:110px"></label>
       <div class="stat"><div class="label">Profit</div><div class="val">${profitCell(ev.profit === null ? null : ev.profit * crafts)}</div></div>
