@@ -5,7 +5,7 @@ import { resetMemo } from './calc.js';
 import { bindTooltips, itemLink, toast } from './ui.js';
 import * as V from './views.js';
 
-const VIEWS = ['board', 'leatherworking', 'skinning', 'disenchant', 'neutral', 'bags', 'ledger', 'market', 'setup'];
+const VIEWS = ['board', 'leatherworking', 'cooking', 'skinning', 'disenchant', 'recipes', 'recipefarm', 'neutral', 'bags', 'ledger', 'market', 'setup'];
 const el = document.getElementById('view');
 const drawer = document.getElementById('drawer');
 const drawerBody = document.getElementById('drawerBody');

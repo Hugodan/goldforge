@@ -1,78 +1,739 @@
 {
-  "version": 1,
-  "notes": "Shared by the collector (to decide which items get full history) and the web app. Disenchant and skinning numbers are WoW Classic baselines; the Goldforge addon replaces them with what your own characters actually get.",
-  "vendorGoods": {
-    "2320": "Coarse Thread", "2321": "Fine Thread", "4291": "Silken Thread", "8343": "Heavy Silken Thread",
-    "14341": "Rune Thread", "4289": "Salt", "2324": "Bleach", "2325": "Black Dye", "2604": "Red Dye",
-    "2605": "Green Dye", "4340": "Gray Dye", "4341": "Yellow Dye", "4342": "Purple Dye", "6260": "Blue Dye",
-    "6261": "Orange Dye", "10290": "Pink Dye", "4470": "Simple Wood", "3371": "Empty Vial", "3372": "Leaded Vial",
-    "8925": "Crystal Vial", "18256": "Imbued Vial", "6217": "Copper Rod"
-  },
-  "enchantMats": [10940, 11083, 11137, 11176, 16204, 10938, 10939, 10998, 11082, 11134, 11135, 11174, 11175, 16202, 16203, 10978, 11084, 11138, 11139, 11177, 11178, 14343, 14344, 20725],
-  "disenchant": {
-    "uncommonArmor": [
-      {"min": 1,  "max": 15, "out": [[10940, 0.80, 1.5], [10938, 0.20, 1.5]]},
-      {"min": 16, "max": 20, "out": [[10940, 0.75, 2.5], [10939, 0.20, 1.5], [10978, 0.05, 1]]},
-      {"min": 21, "max": 25, "out": [[10940, 0.75, 5.0], [10998, 0.15, 1.5], [10978, 0.10, 1]]},
-      {"min": 26, "max": 30, "out": [[11083, 0.75, 1.5], [11082, 0.20, 1.5], [11084, 0.05, 1]]},
-      {"min": 31, "max": 35, "out": [[11083, 0.75, 3.5], [11134, 0.20, 1.5], [11138, 0.05, 1]]},
-      {"min": 36, "max": 40, "out": [[11137, 0.75, 1.5], [11135, 0.20, 1.5], [11139, 0.05, 1]]},
-      {"min": 41, "max": 45, "out": [[11137, 0.75, 3.5], [11174, 0.20, 1.5], [11177, 0.05, 1]]},
-      {"min": 46, "max": 50, "out": [[11176, 0.75, 1.5], [11175, 0.20, 1.5], [11178, 0.05, 1]]},
-      {"min": 51, "max": 55, "out": [[11176, 0.75, 3.5], [16202, 0.20, 1.5], [14343, 0.05, 1]]},
-      {"min": 56, "max": 60, "out": [[16204, 0.75, 1.5], [16203, 0.20, 1.5], [14344, 0.05, 1]]},
-      {"min": 61, "max": 999, "out": [[16204, 0.75, 3.5], [16203, 0.20, 2.5], [14344, 0.05, 1]]}
+ "version": 1,
+ "notes": "Shared by the collector (to decide which items get full history) and the web app. Disenchant and skinning numbers are WoW Classic baselines; the Goldforge addon replaces them with what your own characters actually get.",
+ "vendorGoods": {
+  "2320": "Coarse Thread",
+  "2321": "Fine Thread",
+  "4291": "Silken Thread",
+  "8343": "Heavy Silken Thread",
+  "14341": "Rune Thread",
+  "4289": "Salt",
+  "2324": "Bleach",
+  "2325": "Black Dye",
+  "2604": "Red Dye",
+  "2605": "Green Dye",
+  "4340": "Gray Dye",
+  "4341": "Yellow Dye",
+  "4342": "Purple Dye",
+  "6260": "Blue Dye",
+  "6261": "Orange Dye",
+  "10290": "Pink Dye",
+  "4470": "Simple Wood",
+  "3371": "Empty Vial",
+  "3372": "Leaded Vial",
+  "8925": "Crystal Vial",
+  "18256": "Imbued Vial",
+  "6217": "Copper Rod"
+ },
+ "enchantMats": [
+  10940,
+  11083,
+  11137,
+  11176,
+  16204,
+  10938,
+  10939,
+  10998,
+  11082,
+  11134,
+  11135,
+  11174,
+  11175,
+  16202,
+  16203,
+  10978,
+  11084,
+  11138,
+  11139,
+  11177,
+  11178,
+  14343,
+  14344,
+  20725
+ ],
+ "disenchant": {
+  "uncommonArmor": [
+   {
+    "min": 1,
+    "max": 15,
+    "out": [
+     [
+      10940,
+      0.8,
+      1.5
+     ],
+     [
+      10938,
+      0.2,
+      1.5
+     ]
+    ]
+   },
+   {
+    "min": 16,
+    "max": 20,
+    "out": [
+     [
+      10940,
+      0.75,
+      2.5
+     ],
+     [
+      10939,
+      0.2,
+      1.5
+     ],
+     [
+      10978,
+      0.05,
+      1
+     ]
+    ]
+   },
+   {
+    "min": 21,
+    "max": 25,
+    "out": [
+     [
+      10940,
+      0.75,
+      5.0
+     ],
+     [
+      10998,
+      0.15,
+      1.5
+     ],
+     [
+      10978,
+      0.1,
+      1
+     ]
+    ]
+   },
+   {
+    "min": 26,
+    "max": 30,
+    "out": [
+     [
+      11083,
+      0.75,
+      1.5
+     ],
+     [
+      11082,
+      0.2,
+      1.5
+     ],
+     [
+      11084,
+      0.05,
+      1
+     ]
+    ]
+   },
+   {
+    "min": 31,
+    "max": 35,
+    "out": [
+     [
+      11083,
+      0.75,
+      3.5
+     ],
+     [
+      11134,
+      0.2,
+      1.5
+     ],
+     [
+      11138,
+      0.05,
+      1
+     ]
+    ]
+   },
+   {
+    "min": 36,
+    "max": 40,
+    "out": [
+     [
+      11137,
+      0.75,
+      1.5
+     ],
+     [
+      11135,
+      0.2,
+      1.5
+     ],
+     [
+      11139,
+      0.05,
+      1
+     ]
+    ]
+   },
+   {
+    "min": 41,
+    "max": 45,
+    "out": [
+     [
+      11137,
+      0.75,
+      3.5
+     ],
+     [
+      11174,
+      0.2,
+      1.5
+     ],
+     [
+      11177,
+      0.05,
+      1
+     ]
+    ]
+   },
+   {
+    "min": 46,
+    "max": 50,
+    "out": [
+     [
+      11176,
+      0.75,
+      1.5
+     ],
+     [
+      11175,
+      0.2,
+      1.5
+     ],
+     [
+      11178,
+      0.05,
+      1
+     ]
+    ]
+   },
+   {
+    "min": 51,
+    "max": 55,
+    "out": [
+     [
+      11176,
+      0.75,
+      3.5
+     ],
+     [
+      16202,
+      0.2,
+      1.5
+     ],
+     [
+      14343,
+      0.05,
+      1
+     ]
+    ]
+   },
+   {
+    "min": 56,
+    "max": 60,
+    "out": [
+     [
+      16204,
+      0.75,
+      1.5
+     ],
+     [
+      16203,
+      0.2,
+      1.5
+     ],
+     [
+      14344,
+      0.05,
+      1
+     ]
+    ]
+   },
+   {
+    "min": 61,
+    "max": 999,
+    "out": [
+     [
+      16204,
+      0.75,
+      3.5
+     ],
+     [
+      16203,
+      0.2,
+      2.5
+     ],
+     [
+      14344,
+      0.05,
+      1
+     ]
+    ]
+   }
+  ],
+  "uncommonWeaponSwapsDustAndEssence": true,
+  "rare": [
+   {
+    "min": 1,
+    "max": 25,
+    "out": [
+     [
+      10978,
+      1.0,
+      1
+     ]
+    ]
+   },
+   {
+    "min": 26,
+    "max": 30,
+    "out": [
+     [
+      11084,
+      1.0,
+      1
+     ]
+    ]
+   },
+   {
+    "min": 31,
+    "max": 35,
+    "out": [
+     [
+      11138,
+      1.0,
+      1
+     ]
+    ]
+   },
+   {
+    "min": 36,
+    "max": 40,
+    "out": [
+     [
+      11139,
+      1.0,
+      1
+     ]
+    ]
+   },
+   {
+    "min": 41,
+    "max": 45,
+    "out": [
+     [
+      11177,
+      1.0,
+      1
+     ]
+    ]
+   },
+   {
+    "min": 46,
+    "max": 50,
+    "out": [
+     [
+      11178,
+      1.0,
+      1
+     ]
+    ]
+   },
+   {
+    "min": 51,
+    "max": 55,
+    "out": [
+     [
+      14343,
+      1.0,
+      1
+     ]
+    ]
+   },
+   {
+    "min": 56,
+    "max": 999,
+    "out": [
+     [
+      14344,
+      0.995,
+      1
+     ],
+     [
+      20725,
+      0.005,
+      1
+     ]
+    ]
+   }
+  ],
+  "epic": [
+   {
+    "min": 1,
+    "max": 45,
+    "out": [
+     [
+      11177,
+      1.0,
+      3
+     ]
+    ]
+   },
+   {
+    "min": 46,
+    "max": 50,
+    "out": [
+     [
+      11178,
+      1.0,
+      3
+     ]
+    ]
+   },
+   {
+    "min": 51,
+    "max": 55,
+    "out": [
+     [
+      14343,
+      1.0,
+      3
+     ]
+    ]
+   },
+   {
+    "min": 56,
+    "max": 60,
+    "out": [
+     [
+      20725,
+      1.0,
+      1
+     ]
+    ]
+   },
+   {
+    "min": 61,
+    "max": 999,
+    "out": [
+     [
+      20725,
+      1.0,
+      1.5
+     ]
+    ]
+   }
+  ],
+  "notDisenchantableInventoryTypes": [
+   4,
+   19,
+   24,
+   27
+  ]
+ },
+ "skinning": {
+  "tiers": [
+   {
+    "id": "light",
+    "label": "Light leather",
+    "mob": [
+     1,
+     20
     ],
-    "uncommonWeaponSwapsDustAndEssence": true,
-    "rare": [
-      {"min": 1,  "max": 25, "out": [[10978, 1.0, 1]]},
-      {"min": 26, "max": 30, "out": [[11084, 1.0, 1]]},
-      {"min": 31, "max": 35, "out": [[11138, 1.0, 1]]},
-      {"min": 36, "max": 40, "out": [[11139, 1.0, 1]]},
-      {"min": 41, "max": 45, "out": [[11177, 1.0, 1]]},
-      {"min": 46, "max": 50, "out": [[11178, 1.0, 1]]},
-      {"min": 51, "max": 55, "out": [[14343, 1.0, 1]]},
-      {"min": 56, "max": 999, "out": [[14344, 0.995, 1], [20725, 0.005, 1]]}
+    "out": [
+     [
+      2934,
+      0.45
+     ],
+     [
+      2318,
+      0.85
+     ],
+     [
+      783,
+      0.06
+     ]
     ],
-    "epic": [
-      {"min": 1,  "max": 45, "out": [[11177, 1.0, 3]]},
-      {"min": 46, "max": 50, "out": [[11178, 1.0, 3]]},
-      {"min": 51, "max": 55, "out": [[14343, 1.0, 3]]},
-      {"min": 56, "max": 60, "out": [[20725, 1.0, 1]]},
-      {"min": 61, "max": 999, "out": [[20725, 1.0, 1.5]]}
+    "zones": [
+     "Westfall",
+     "Loch Modan",
+     "Redridge Mountains",
+     "Darkshore",
+     "The Barrens"
+    ]
+   },
+   {
+    "id": "medium",
+    "label": "Medium leather",
+    "mob": [
+     18,
+     30
     ],
-    "notDisenchantableInventoryTypes": [4, 19, 24, 27]
-  },
-  "skinning": {
-    "tiers": [
-      {"id": "light",  "label": "Light leather",  "mob": [1, 20],  "out": [[2934, 0.45], [2318, 0.85], [783, 0.06]],
-       "zones": ["Westfall", "Loch Modan", "Redridge Mountains", "Darkshore", "The Barrens"]},
-      {"id": "medium", "label": "Medium leather", "mob": [18, 30], "out": [[2318, 0.35], [2319, 0.95], [4232, 0.06]],
-       "zones": ["Wetlands", "Duskwood", "Hillsbrad Foothills", "Ashenvale", "Stonetalon Mountains"]},
-      {"id": "heavy",  "label": "Heavy leather",  "mob": [28, 40], "out": [[2319, 0.35], [4234, 0.95], [4235, 0.06]],
-       "zones": ["Arathi Highlands", "Badlands", "Swamp of Sorrows", "Dustwallow Marsh", "Desolace"]},
-      {"id": "thick",  "label": "Thick leather",  "mob": [38, 50], "out": [[4234, 0.30], [4304, 1.00], [8169, 0.06]],
-       "zones": ["Stranglethorn Vale", "Feralas", "The Hinterlands", "Tanaris", "Searing Gorge"]},
-      {"id": "rugged", "label": "Rugged leather", "mob": [48, 63], "out": [[4304, 0.25], [8170, 1.05], [8171, 0.06]],
-       "zones": ["Un'Goro Crater", "Winterspring", "Burning Steppes", "Felwood", "Eastern Plaguelands", "Silithus"]}
+    "out": [
+     [
+      2318,
+      0.35
+     ],
+     [
+      2319,
+      0.95
+     ],
+     [
+      4232,
+      0.06
+     ]
     ],
-    "special": [
-      {"item": 15417, "mob": "Devilsaurs", "zone": "Un'Goro Crater", "tier": "rugged", "chance": 0.85},
-      {"item": 15419, "mob": "Bears (Ironbeak/Winterspring)", "zone": "Felwood / Winterspring", "tier": "rugged", "chance": 0.25},
-      {"item": 15422, "mob": "Frostsabers", "zone": "Winterspring", "tier": "rugged", "chance": 0.25},
-      {"item": 15423, "mob": "Chimaeras", "zone": "Winterspring / Azshara", "tier": "rugged", "chance": 0.25},
-      {"item": 15416, "mob": "Black dragonkin", "zone": "Burning Steppes", "tier": "rugged", "chance": 0.30},
-      {"item": 15412, "mob": "Green dragonkin", "zone": "Swamp of Sorrows / Feralas", "tier": "thick", "chance": 0.25},
-      {"item": 15415, "mob": "Blue dragonkin", "zone": "Azshara / Winterspring", "tier": "rugged", "chance": 0.25},
-      {"item": 8165,  "mob": "Whelps and drakes", "zone": "Swamp of Sorrows / Badlands", "tier": "heavy", "chance": 0.30},
-      {"item": 8154,  "mob": "Scorpids", "zone": "Tanaris / Badlands", "tier": "thick", "chance": 0.35},
-      {"item": 15408, "mob": "Scorpids", "zone": "Burning Steppes / Silithus / Blasted Lands", "tier": "rugged", "chance": 0.35},
-      {"item": 8167,  "mob": "Turtles", "zone": "Tanaris / Feralas", "tier": "thick", "chance": 0.35},
-      {"item": 8368,  "mob": "Wolves", "zone": "Alterac / Winterspring", "tier": "thick", "chance": 0.10}
+    "zones": [
+     "Wetlands",
+     "Duskwood",
+     "Hillsbrad Foothills",
+     "Ashenvale",
+     "Stonetalon Mountains"
+    ]
+   },
+   {
+    "id": "heavy",
+    "label": "Heavy leather",
+    "mob": [
+     28,
+     40
     ],
-    "scarce": [249427, 249428, 249429],
-    "scarceChancePerSkin": 0.04,
-    "bountifulHarvestPerRank": 0.20
-  },
-  "foreverMaterials": {"248824": "Fel Hide", "248825": "Fel Leather", "249427": "Pristine Leather", "249428": "Pristine Hide", "249429": "Pristine Scale", "249409": "Cerulean Dye", "249410": "Sulfuric Acid", "274030": "Malleable Essence of Nature"}
+    "out": [
+     [
+      2319,
+      0.35
+     ],
+     [
+      4234,
+      0.95
+     ],
+     [
+      4235,
+      0.06
+     ]
+    ],
+    "zones": [
+     "Arathi Highlands",
+     "Badlands",
+     "Swamp of Sorrows",
+     "Dustwallow Marsh",
+     "Desolace"
+    ]
+   },
+   {
+    "id": "thick",
+    "label": "Thick leather",
+    "mob": [
+     38,
+     50
+    ],
+    "out": [
+     [
+      4234,
+      0.3
+     ],
+     [
+      4304,
+      1.0
+     ],
+     [
+      8169,
+      0.06
+     ]
+    ],
+    "zones": [
+     "Stranglethorn Vale",
+     "Feralas",
+     "The Hinterlands",
+     "Tanaris",
+     "Searing Gorge"
+    ]
+   },
+   {
+    "id": "rugged",
+    "label": "Rugged leather",
+    "mob": [
+     48,
+     63
+    ],
+    "out": [
+     [
+      4304,
+      0.25
+     ],
+     [
+      8170,
+      1.05
+     ],
+     [
+      8171,
+      0.06
+     ]
+    ],
+    "zones": [
+     "Un'Goro Crater",
+     "Winterspring",
+     "Burning Steppes",
+     "Felwood",
+     "Eastern Plaguelands",
+     "Silithus"
+    ]
+   }
+  ],
+  "special": [
+   {
+    "item": 15417,
+    "mob": "Devilsaurs",
+    "zone": "Un'Goro Crater",
+    "tier": "rugged",
+    "chance": 0.85,
+    "rate": 18
+   },
+   {
+    "item": 15419,
+    "mob": "Bears (Ironbeak/Winterspring)",
+    "zone": "Felwood / Winterspring",
+    "tier": "rugged",
+    "chance": 0.25,
+    "rate": 60
+   },
+   {
+    "item": 15422,
+    "mob": "Frostsabers",
+    "zone": "Winterspring",
+    "tier": "rugged",
+    "chance": 0.25,
+    "rate": 55
+   },
+   {
+    "item": 15423,
+    "mob": "Chimaeras",
+    "zone": "Winterspring / Azshara",
+    "tier": "rugged",
+    "chance": 0.25,
+    "rate": 45
+   },
+   {
+    "item": 15416,
+    "mob": "Black dragonkin",
+    "zone": "Burning Steppes",
+    "tier": "rugged",
+    "chance": 0.3,
+    "rate": 45
+   },
+   {
+    "item": 15412,
+    "mob": "Green dragonkin",
+    "zone": "Swamp of Sorrows / Feralas",
+    "tier": "thick",
+    "chance": 0.25,
+    "rate": 40
+   },
+   {
+    "item": 15415,
+    "mob": "Blue dragonkin",
+    "zone": "Azshara / Winterspring",
+    "tier": "rugged",
+    "chance": 0.25,
+    "rate": 40
+   },
+   {
+    "item": 8165,
+    "mob": "Whelps and drakes",
+    "zone": "Swamp of Sorrows / Badlands",
+    "tier": "heavy",
+    "chance": 0.3,
+    "rate": 60
+   },
+   {
+    "item": 8154,
+    "mob": "Scorpids",
+    "zone": "Tanaris / Badlands",
+    "tier": "thick",
+    "chance": 0.35,
+    "rate": 70
+   },
+   {
+    "item": 15408,
+    "mob": "Scorpids",
+    "zone": "Burning Steppes / Silithus / Blasted Lands",
+    "tier": "rugged",
+    "chance": 0.35,
+    "rate": 60
+   },
+   {
+    "item": 8167,
+    "mob": "Turtles",
+    "zone": "Tanaris / Feralas",
+    "tier": "thick",
+    "chance": 0.35,
+    "rate": 55
+   },
+   {
+    "item": 8368,
+    "mob": "Wolves",
+    "zone": "Alterac / Winterspring",
+    "tier": "thick",
+    "chance": 0.1,
+    "rate": 70
+   }
+  ],
+  "scarce": [
+   249427,
+   249428,
+   249429
+  ],
+  "scarceChancePerSkin": 0.04,
+  "bountifulHarvestPerRank": 0.2,
+  "specialRateNote": "Realistic skins per hour for that target alone (spawn density, elites). Your addon log replaces it."
+ },
+ "foreverMaterials": {
+  "248824": "Fel Hide",
+  "248825": "Fel Leather",
+  "249427": "Pristine Leather",
+  "249428": "Pristine Hide",
+  "249429": "Pristine Scale",
+  "249409": "Cerulean Dye",
+  "249410": "Sulfuric Acid",
+  "274030": "Malleable Essence of Nature"
+ },
+ "recipePrefixes": {
+  "Pattern: ": [
+   "leatherworking",
+   "tailoring"
+  ],
+  "Plans: ": [
+   "blacksmithing"
+  ],
+  "Schematic: ": [
+   "engineering"
+  ],
+  "Formula: ": [
+   "enchanting"
+  ],
+  "Recipe: ": [
+   "alchemy",
+   "cooking"
+  ],
+  "Manual: ": [
+   "first aid"
+  ],
+  "Book: ": []
+ },
+ "legacy": {
+  "masterChefPerRank": 0.1,
+  "masterChefRanks": 5,
+  "barteringPerRank": 0.05,
+  "barteringRanks": 2,
+  "gourmandRanks": 3
+ }
 }

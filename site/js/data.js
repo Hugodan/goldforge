@@ -21,11 +21,12 @@ async function getJSON(path, optional = false) {
 }
 
 export async function loadAll() {
-  const [meta, constants, items, recipes, icons] = await Promise.all([
+  const [meta, constants, items, recipes, icons, sources] = await Promise.all([
     getJSON('data/meta.json'), getJSON('static/constants.json'), getJSON('data/items.json'),
-    getJSON('data/recipes.json'), getJSON('data/icons.json', true),
+    getJSON('data/recipes.json'), getJSON('data/icons.json', true), getJSON('static/sources.json', true),
   ]);
   DB.meta = meta; DB.constants = constants; DB.icons = icons || {};
+  DB.sources = sources || { items: {}, npcs: {}, objects: {}, quests: {} };
   DB.itemCols = items.cols; DB.items = items.items;
   DB.recipes = recipes.recipes || []; DB.recipeSource = recipes.source; DB.recipeBuild = recipes.build;
   indexRecipes();
@@ -77,8 +78,9 @@ export function idByName(name) {
 }
 
 function indexRecipes() {
-  DB.recipesByProduct = {}; DB.recipesByReagent = {};
+  DB.recipesByProduct = {}; DB.recipesByReagent = {}; DB.recipesByPattern = {};
   for (const r of DB.recipes) {
+    if (r.pat) (DB.recipesByPattern[r.pat] ||= []).push(r);
     (DB.recipesByProduct[r.i] ||= []).push(r);
     for (const [id] of r.r) (DB.recipesByReagent[id] ||= []).push(r);
   }
@@ -92,6 +94,9 @@ export function item(id) {
   if (!v) return { id: +id, name: `Item ${id}`, q: 1, ilvl: 0, cls: -1, sub: -1, sell: 0, buy: 0, req: 0, bind: 0, inv: 0, known: false };
   return { id: +id, name: v[0], q: v[1], ilvl: v[2], cls: v[3], sub: v[4], sell: v[5], buy: v[6], req: v[7], bind: v[8], inv: v[9], known: true };
 }
+
+export const PROFESSIONS = ['leatherworking', 'skinning', 'blacksmithing', 'tailoring', 'engineering', 'alchemy', 'enchanting', 'cooking', 'first aid', 'mining'];
+export const profLabel = p => String(p || '').replace(/\b\w/g, c => c.toUpperCase());
 
 export const qualityClass = q => `q-${QUALITY[q] || 'common'}`;
 

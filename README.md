@@ -11,6 +11,9 @@ sell, buying slippage on big orders, and what your own materials could have sold
 |---|---|
 | Gold Board | The best thing to do right now: top craft by gold/day, best farm, best disenchant and neutral-AH flips, what your bags are worth |
 | Leatherworking | Every recipe's cost (cheapest of AH, vendor, crafting it yourself or your bags), best exit (AH, neutral AH, disenchant, vendor), profit, margin, sales per day |
+| Cooking | Every dish's profit including Master Chef's extra results and Bartering's vendor discount, Forever XP/stat foods, and whether to cook or sell the meat you loot |
+| Recipes | All ~2,000 recipes for every profession: skill, where each is learned (trainer, vendor, drop, chest, quest, or new in Forever), pattern price on the AH, craft profit |
+| Recipe Farm | Recipe items worth farming (with mobs, zones and levels), vendor recipes to resell, and Forever-only patterns already trading |
 | Skinning | Gold per hour by leather tier and special target, with Bountiful Harvest, plus your own logged yields per mob, and whether to sell leather raw or craft it |
 | Disenchanting | Craft → mail to your enchanter → disenchant, gear on the AH worth more as mats, and your alt's real disenchant results |
 | Neutral AH | Where to sell your goods and cross-faction flips through the Blackwater AH (15% cut, 5× deposit) |
@@ -72,6 +75,9 @@ Everything stays in your own SavedVariables until you export it. Nothing is sent
   replace the Classic baselines on the Skinning tab.
 * every disenchant on your enchanter: item and results. After 3 disenchants of an item, your real results
   replace the Classic disenchant table.
+* recipe items sold by any vendor you open (who, where, gold or currency cost such as Merchant's Favor,
+  limited stock) and recipe items you loot (which mob, which zone). This fills in sources for Forever-only
+  patterns that no open database has yet.
 
 Commands: `/gf export`, `/gf status`, `/gf reset`.
 
@@ -97,6 +103,13 @@ Commands: `/gf export`, `/gf status`, `/gf reset`.
   leather, hide, scarce materials boosted 20% per Bountiful Harvest rank). These are Classic-based
   baselines until your addon log has real numbers.
 
+* **Legacy talents** (Settings or the Cooking tab): Bountiful Harvest (+20% scarce materials per rank),
+  Master Chef (+10% chance of an extra cooking result per rank), Bartering (−5% vendor prices per rank).
+  Guides disagree on Master Chef's exact values, so set the rank to match your tooltip.
+* **Where recipes come from**: Classic vendors, drops, chests and quests come from QuestieDB (its Forever data
+  matches Classic Era). Forever-only patterns are marked "new pattern" with a Wowhead link until the addon sees
+  them sold or dropped.
+
 Where Forever differs from Classic and nobody has published the numbers yet (deposit formula, skinning
 and disenchant tables, scarce material rates), Goldforge uses the Classic rule, says so in the app, and
 lets the addon's measurements replace it.
@@ -107,7 +120,8 @@ lets the addon's measurements replace it.
 collector/   Python (standard library only): Battle.net client, snapshot stats, sales diff, game data
 site/        the web app (plain HTML/CSS/JS, no build step); static/constants.json holds shared tables
 addon/       the in-game Goldforge addon (Interface 16001)
-seed/        fallback recipes, used only if wago.tools is unreachable (see NOTICE.md)
+seed/        fallback recipes for every profession, used only if wago.tools is unreachable (see NOTICE.md)
+tools/       build_sources.py: rebuilds site/static/sources.json (recipe sources) from QuestieDB
 config.json  houses to track (111 primary, 117 neutral; 110/119/123 for the house check)
 ```
 

@@ -2,7 +2,8 @@
 
 ## seed/recipes.json and seed/items.json
 
-Converted from `leatherworking.json` in [jykwon91/MyFreeApps](https://github.com/jykwon91/MyFreeApps)
+Converted from the profession JSON files (alchemy, blacksmithing, enchanting, engineering, first aid,
+leatherworking, tailoring) and `food/foods.json` in [jykwon91/MyFreeApps](https://github.com/jykwon91/MyFreeApps)
 (itself generated from wago.tools DB2 extracts of WoW Forever build 1.60.1.70888). Goldforge only uses it
 as a fallback when wago.tools cannot be reached, and to fill in where a pattern is learned.
 
@@ -29,6 +30,14 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## site/static/sources.json
+
+Where each recipe item is sold, dropped, found or rewarded. Built by `tools/build_sources.py` from
+[QuestieDB](https://github.com/questie/QuestieDB) `data/Forever/*` (item, NPC, object and quest data,
+zone names from `src/corrections/enum/zones.lua`). QuestieDB is licensed under GPL-3.0, so this derived
+data file is distributed under the GNU General Public License v3.0: see `site/static/sources.LICENSE.md`.
+The parser reads QuestieDB's files as text and never executes them.
 
 ## Game data and prices
 

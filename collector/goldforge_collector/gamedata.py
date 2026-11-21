@@ -19,7 +19,9 @@ WAGO_BUILDS = "https://wago.tools/api/builds"
 WAGO_CSV = "https://wago.tools/db2/{table}/csv?build={build}&useHotfixes=1"
 WAGO_TABLES = ["SkillLineAbility", "SpellName", "SpellReagents", "SpellEffect", "ItemSparse", "Item"]
 CREATE_ITEM = 24
-SKILL_LINES = {165: "leatherworking", 393: "skinning", 333: "enchanting"}
+SKILL_LINES = {165: "leatherworking", 393: "skinning", 333: "enchanting", 164: "blacksmithing", 171: "alchemy",
+               197: "tailoring", 202: "engineering", 185: "cooking", 129: "first aid", 186: "mining"}
+RECIPE_PREFIXES = ["Pattern: ", "Plans: ", "Schematic: ", "Formula: ", "Recipe: ", "Manual: ", "Book: ", "Design: "]
 QUALITY = {"POOR": 0, "COMMON": 1, "UNCOMMON": 2, "RARE": 3, "EPIC": 4, "LEGENDARY": 5, "ARTIFACT": 6, "HEIRLOOM": 7}
 BINDING = {"ON_ACQUIRE": 1, "ON_EQUIP": 2, "ON_USE": 3, "QUEST": 4, "TO_ACCOUNT": 7, "TO_BNETACCOUNT": 8}
 ITEM_COLS = ["name", "q", "ilvl", "cls", "sub", "sell", "buy", "req", "bind", "inv"]
@@ -113,7 +115,7 @@ def recipes_from_wago(tables, item_names):
     for r in tables["SkillLineAbility"]:
         line = _num(r, "SkillLine")
         prof = SKILL_LINES.get(line)
-        if not prof or prof == "enchanting":
+        if not prof:
             continue
         sid = _num(r, "Spell")
         made = creates.get(sid)
@@ -131,17 +133,39 @@ def recipes_from_wago(tables, item_names):
     return out
 
 
+def link_recipe_items(recipes, item_rows):
+    """Attach the recipe item ("Pattern: X", "Plans: X", ...) that teaches each recipe, by name.
+    item_rows: {item_id: name}. Recipes with no recipe item and no seed source are trainer recipes."""
+    by_name = {}
+    for iid, name in item_rows.items():
+        for pre in RECIPE_PREFIXES:
+            if name.startswith(pre):
+                by_name.setdefault(name[len(pre):].strip().lower(), []).append(iid)
+                break
+    for r in recipes:
+        if r.get("pat"):
+            continue
+        cands = by_name.get(r["n"].lower()) or by_name.get(str(item_rows.get(r["i"], "")).lower())
+        if cands:
+            r["pat"] = min(cands)
+            r["src"] = r.get("src") or "item"
+        elif not r.get("src"):
+            r["src"] = "start" if r.get("auto") else "trainer"
+    return recipes
+
+
 def merge_seed(recipes, seed):
     """Fill learn-source details (trainer / pattern item / Merchant's Favor) from the seed file,
     and add seed recipes that wago did not produce."""
     by_spell = {r["s"]: r for r in recipes}
+    by_product = {(r["p"], r["i"]): r for r in recipes}
     for s in seed.get("recipes", []):
-        r = by_spell.get(s["s"])
+        r = by_spell.get(s["s"]) or by_product.get((s.get("p"), s.get("i")))
         if r is None:
             by_spell[s["s"]] = dict(s)
             continue
-        for k in ("src", "pat", "patn", "favor", "new", "camp", "l"):
-            if k in s and (k not in r or (k == "l" and r.get("l", 0) <= 1)):
+        for k in ("src", "pat", "patn", "patBop", "favor", "new", "camp", "l", "kind", "xp", "buff"):
+            if k in s and (k not in r or (k == "l" and r.get("l", 0) <= 1) or (k == "src" and r.get("src") == "trainer" and s[k] != "trainer")):
                 r[k] = s[k]
     return sorted(by_spell.values(), key=lambda r: (r["p"], r.get("l", 0), r["n"]))
 
@@ -172,9 +196,11 @@ def icon_from_media(body):
     return None
 
 
-def fill_missing_items(bnet, items, wanted, budget, log=print):
-    """Look up items wago could not name through the Battle.net item API (bounded per run)."""
-    missing = [i for i in sorted(wanted) if i not in items]
+def fill_missing_items(bnet, items, wanted, budget, log=print, first=None):
+    """Look up items wago could not name through the Battle.net item API (bounded per run).
+    Items in `first` (e.g. what is on the auction house right now) are looked up before the rest."""
+    first = first or set()
+    missing = sorted((i for i in wanted if i not in items), key=lambda i: (i not in first, i))
     done = 0
     for iid in missing[:budget]:
         status, _h, body = bnet.item(iid)

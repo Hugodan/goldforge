@@ -58,6 +58,8 @@ local function initDB()
   DB.skins = DB.skins or {}
   DB.de = DB.de or {}
   DB.posts = DB.posts or {}
+  DB.recipeVendors = DB.recipeVendors or {}
+  DB.recipeDrops = DB.recipeDrops or {}
   ns.DB = DB
 end
 
@@ -413,6 +415,47 @@ local function onLoot()
   end
 end
 
+-- ------------------------------------------------------------------------- recipe sources
+local RECIPE_CLASS = 9
+
+local function isRecipe(id)
+  if not id then return false end
+  local classID
+  if C_Item and C_Item.GetItemInfoInstant then classID = select(6, C_Item.GetItemInfoInstant(id))
+  elseif GetItemInfoInstant then classID = select(6, GetItemInfoInstant(id)) end
+  return classID == RECIPE_CLASS
+end
+
+local function merchantCost(i)
+  if not GetMerchantItemCostInfo then return nil end
+  local n = GetMerchantItemCostInfo(i) or 0
+  local parts = {}
+  for j = 1, n do
+    local _, value, link, currencyName = GetMerchantItemCostItem(i, j)
+    local nm = currencyName or (link and link:match("%[(.-)%]"))
+    if value and nm then parts[#parts + 1] = value .. " " .. nm end
+  end
+  return #parts > 0 and table.concat(parts, " + ") or nil
+end
+
+local function recordRecipeLoot()
+  local sourceGUID
+  for slot = 1, (GetNumLootItems and GetNumLootItems() or 0) do
+    local id = itemIDFromLink(GetLootSlotLink(slot))
+    if id and isRecipe(id) then
+      sourceGUID = GetLootSourceInfo and GetLootSourceInfo(slot)
+      local mob = UnitExists("target") and UnitIsDead("target") and UnitName("target") or nil
+      local e = DB.recipeDrops[id] or { n = 0 }
+      e.n = e.n + 1
+      e.mob = mob or e.mob
+      e.npc = npcFromGUID(sourceGUID) or e.npc
+      e.zone = GetZoneText and GetZoneText() or e.zone
+      e.t = now()
+      DB.recipeDrops[id] = e
+    end
+  end
+end
+
 -- ------------------------------------------------------------------------- vendors
 local function scanMerchant()
   local n = GetMerchantNumItems and GetMerchantNumItems() or 0
@@ -429,6 +472,12 @@ local function scanMerchant()
       price, stack, extended = p, q, ext
     end
     if id and price and price > 0 and not extended then DB.vendor[id] = math.floor(price / math.max(1, stack or 1) + 0.5) end
+    if id and isRecipe(id) then
+      local _, _, _, _, available = GetMerchantItemInfo(i)
+      DB.recipeVendors[id] = { npc = UnitName("npc"), zone = GetZoneText and GetZoneText(), sub = GetSubZoneText and GetSubZoneText(),
+                               price = (price and price > 0) and price or nil, cost = extended and merchantCost(i) or nil,
+                               limited = available and available >= 0 and available or nil, t = now() }
+    end
   end
 end
 
@@ -492,7 +541,7 @@ local handlers = {
     if b and b.gold then ledgerAdd({ type = "buy", item = b.item, qty = 1, gold = b.gold }) end
   end,
   UNIT_SPELLCAST_SENT = onSpellSent,
-  LOOT_READY = function() safe(onLoot) end,
+  LOOT_READY = function() safe(recordRecipeLoot); safe(onLoot) end,
   LOOT_OPENED = function() safe(onLoot) end,
 }
 

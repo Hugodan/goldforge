@@ -66,18 +66,30 @@ export function vendorPrice(id) {
   const learned = a?.vendor?.[id];
   const override = s.vendorOverrides[id];
   if (override === false) return null;
-  if (learned) return learned;
+  const discount = 1 - (s.barteringRank || 0) * (DB.constants.legacy?.barteringPerRank ?? 0.05);
+  if (learned) return learned * discount;
   if (override === true || DB.constants.vendorGoods[id]) {
     const it = item(id);
-    return it.buy > 0 ? it.buy : null;
+    return it.buy > 0 ? it.buy * discount : null;
   }
   return null;
 }
 
 // ----------------------------------------------------------------------------- buying
+const BUY_QUANTITIES = [5, 10, 20, 30, 50, 100, 200];
+
 function ahBuyUnit(id, qty, house = S().house) {
   const p = price(house, id);
   if (!p || !p.min) return null;
+  if (Array.isArray(p.bq) && qty > 1) {
+    // exact order-book cost for the next quantity step at or above what you need
+    for (let k = 0; k < BUY_QUANTITIES.length; k++) {
+      if (BUY_QUANTITIES[k] >= qty) {
+        if (p.bq[k]) return p.bq[k];
+        return null;      // not enough listed
+      }
+    }
+  }
   if (qty >= 200 && p.b200) return p.b200;
   if (qty >= 50 && p.b50) return p.b50;
   if (qty >= 10 && p.b10) return p.b10;
@@ -213,7 +225,8 @@ export function evaluateRecipe(r, crafts = 1) {
   const cost = missing.length ? null : reagents.reduce((t, x) => t + x.total, 0);
   const ex = exits(r.i);
   const best = ex.find(e => !e.unproven) || null;
-  const makes = r.m || 1;
+  const chef = r.p === 'cooking' ? (S().masterChefRank || 0) * (DB.constants.legacy?.masterChefPerRank ?? 0.1) : 0;
+  const makes = (r.m || 1) * (1 + chef);
   const revenue = best ? best.value * makes : null;
   const profit = cost !== null && revenue !== null ? revenue - cost : null;
   const p = price(S().house, r.i);
@@ -226,6 +239,7 @@ export function evaluateRecipe(r, crafts = 1) {
     spd, daily, market: p, known: recipeKnown(r),
     bop: item(r.i).bind === 1,
     thin: best?.kind === 'AH' && thinMarket(r.i),
+    chef,
   };
 }
 
@@ -249,7 +263,7 @@ export function skinTierValues() {
     const specials = sk.special.filter(x => x.tier === t.id).map(x => {
       const unit = netSale(x.item) ?? 0;
       const v = perSkin + x.chance * unit;
-      return { ...x, unit, perSkin: v, perHour: v * s.skinsPerHour };
+      return { ...x, unit, perSkin: v, perHour: v * (x.rate || s.skinsPerHour) };
     }).sort((a, b) => b.perHour - a.perHour);
     return { ...t, lines, scarce: scarceChance * scarceAvg, scarceChance, perSkin, perHour: perSkin * s.skinsPerHour, specials };
   });
@@ -388,3 +402,98 @@ export function houseMatch() {
 }
 
 export function isTradeGood(id) { return item(id).cls === TRADE_GOODS_CLASS; }
+
+
+// ----------------------------------------------------------------------------- where recipes come from
+const npcName = id => DB.sources.npcs?.[id];
+
+/** Learn source for a recipe: trainer / starter / pattern (vendor, drop, chest, quest, seen by you). */
+export function recipeSource(r) {
+  if (!r.pat) {
+    if (r.src === 'start') return { type: 'Starter', text: 'Known when you learn the profession' };
+    if (r.src === 'quest') return { type: 'Quest', text: 'Quest reward' };
+    if (r.src === 'npc') return { type: 'NPC', text: 'Taught by a special NPC' };
+    return { type: 'Trainer', text: `Profession trainer${r.l > 1 ? ` at skill ${r.l}` : ''}` };
+  }
+  return patternSource(r.pat, r);
+}
+
+export function patternSource(patId, r = null) {
+  const src = DB.sources.items?.[patId];
+  const seenV = addon()?.recipeVendors?.[patId];
+  const seenD = addon()?.recipeDrops?.[patId];
+  const fac = S().faction === 'Horde' ? 'H' : 'A';
+  const out = { pat: patId, vendors: [], drops: null, objects: [], quests: [], seen: [] };
+  if (seenV) out.seen.push(`Sold by ${seenV.npc} (${seenV.zone})${seenV.cost ? ` for ${seenV.cost}` : ''}`);
+  if (seenD) out.seen.push(`Dropped by ${seenD.mob || 'a mob'} in ${seenD.zone} (${seenD.n || 1}×)`);
+  if (src?.v) {
+    for (const id of src.v) {
+      const n = npcName(id);
+      if (!n) continue;
+      out.vendors.push({ id, name: n[0], zone: n[3], friendly: n[4], title: n[5], ok: !n[4] || n[4].includes(fac) });
+    }
+  }
+  if (src?.d) {
+    const d = src.d;
+    out.drops = { count: d.n, lv: d.lv, zones: d.zones, npcs: d.npcs.map(id => npcName(id)).filter(Boolean)
+      .map(n => ({ name: n[0], lv: n[2], zone: n[3], rank: n[6] || 0 })) };
+  }
+  if (src?.o) out.objects = src.o.map(id => DB.sources.objects?.[id]).filter(Boolean).map(o => ({ name: o[0], zone: o[1] }));
+  if (src?.q) out.quests = src.q.map(id => DB.sources.quests?.[id]).filter(Boolean).map(q => ({ name: q[0], lv: q[1] }));
+  let type = 'Pattern';
+  if (out.vendors.length) type = 'Vendor';
+  else if (out.drops) type = out.drops.count > 12 ? 'World drop' : 'Drop';
+  else if (out.objects.length) type = 'Chest';
+  else if (out.quests.length) type = 'Quest';
+  else if (out.seen.length) type = seenV ? 'Vendor' : 'Drop';
+  else if (r?.new || !src) type = 'New pattern';
+  out.type = type;
+  out.text = sourceText(out);
+  return out;
+}
+
+function sourceText(o) {
+  if (o.seen.length && !o.vendors.length && !o.drops) return `${o.seen.join(' · ')} (seen by you)`;
+  if (o.vendors.length) {
+    const ok = o.vendors.filter(v => v.ok);
+    const list = (ok.length ? ok : o.vendors).slice(0, 3).map(v => `${v.name} (${v.zone || '?'}${v.friendly === 'AH' || !v.friendly ? ', neutral' : ''})`);
+    return `${ok.length ? '' : 'Other faction only: '}${list.join(', ')}${o.vendors.length > 3 ? ` +${o.vendors.length - 3} more` : ''}`;
+  }
+  if (o.drops) {
+    const d = o.drops;
+    if (d.count > 12) return `World drop from level ${d.lv[0]}–${d.lv[1]} mobs · most in ${d.zones.slice(0, 3).map(z => z[0]).join(', ')}`;
+    return d.npcs.slice(0, 4).map(n => `${n.name} (${n.zone || '?'}, lvl ${n.lv}${n.rank === 3 ? ', boss' : n.rank === 4 || n.rank === 2 ? ', rare' : ''})`).join(', ');
+  }
+  if (o.objects.length) return `Found in ${[...new Set(o.objects.map(x => `${x.name} (${x.zone})`))].slice(0, 3).join(', ')}`;
+  if (o.quests.length) return `Quest: ${o.quests.map(q => `${q.name} (lvl ${q.lv})`).join(', ')}`;
+  if (o.seen.length) return `${o.seen.join(' · ')} (seen by you)`;
+  return 'New in Forever: not in the open data yet. The addon records it when you see it sold or dropped.';
+}
+
+export const wowheadItem = id => `https://www.wowhead.com/forever/item=${id}`;
+
+/** Recipe items worth farming or flipping: AH value, demand and where they come from. */
+export function recipeFarmRows() {
+  const s = S();
+  const pr = DB.prices[s.house]?.items || {};
+  const ids = new Set([...Object.keys(pr), ...Object.keys(DB.sources.items || {})]);
+  const out = [];
+  for (const idStr of ids) {
+    const id = +idStr;
+    const it = item(id);
+    if (it.cls !== 9 && !DB.sources.items?.[idStr]) continue;
+    const p = price(s.house, id);
+    const rec = (DB.recipesByPattern[id] || [])[0];
+    const src = patternSource(id, rec);
+    const net = it.bind === 1 ? null : netSale(id);
+    const vend = src.vendors.filter(v => v.ok).length && it.buy > 0 ? it.buy * (1 - (s.barteringRank || 0) * 0.05) : null;
+    out.push({ id, it, p, net, rec, src, vend, flip: vend !== null && net !== null ? net - vend : null,
+               bop: it.bind === 1, prof: rec?.p || guessProf(it.name) });
+  }
+  return out;
+}
+
+function guessProf(name) {
+  for (const [pre, profs] of Object.entries(DB.constants.recipePrefixes || {})) if (name.startsWith(pre)) return profs[0] || '';
+  return '';
+}

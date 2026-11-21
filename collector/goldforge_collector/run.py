@@ -18,7 +18,7 @@ import time
 from . import auctions, gamedata, store
 from .bnet import Bnet
 
-DETAIL_COLS = ["min", "flr", "mkt", "qty", "n", "wall", "b10", "b50", "b200", "sold1", "spd", "sp7", "avg7", "tr1"]
+DETAIL_COLS = ["min", "flr", "mkt", "qty", "n", "wall", "b10", "b50", "b200", "sold1", "spd", "sp7", "avg7", "tr1", "bq"]
 BASIC_COLS = ["min", "flr", "mkt", "qty", "n"]
 MAX_GAP = 75 * 60          # snapshots further apart than this are not diffed for sales
 HOURLY_KEEP = 72 * 3600
@@ -55,6 +55,7 @@ def relevant_items(recipes, constants):
     ids.update(s["item"] for s in sk.get("special", []))
     ids.update(sk.get("scarce", []))
     ids.update(int(k) for k in constants.get("foreverMaterials", {}))
+    ids.update(r["pat"] for r in recipes if r.get("pat"))
     return ids
 
 
@@ -106,7 +107,9 @@ def update_sales(state_dir, house_id, snap, rel_ids):
     elif prev:
         log(f"house {house_id}: previous snapshot too old for a sales diff ({(t - prev.get('ts', 0)) / 60:.0f} min)")
 
-    stats = {it: auctions.item_stats(units) for it, units in auctions.group_by_item(snap["listings"]).items()}
+    by_item = auctions.group_by_item(snap["listings"])
+    stats = {it: auctions.item_stats(units) for it, units in by_item.items()}
+    curves = {it: auctions.buy_curve(by_item[it]) for it in by_item if it in rel_ids}
 
     for it, s in stats.items():
         k = str(it)
@@ -145,10 +148,10 @@ def update_sales(state_dir, house_id, snap, rel_ids):
           "coverage_recent": coverage_recent, "price_daily": price_daily, "hourly": hourly, "ts": t}
     store.save(f"{state_dir}/market/{house_id}.json.gz", st)
     store.save(f"{state_dir}/snap/{house_id}.json.gz", {"ts": t, "a": snap["listings"]})
-    return stats, st
+    return stats, st, curves
 
 
-def detail_rows(stats, st, t):
+def detail_rows(stats, st, t, curves=None):
     yesterday = day_of(t - 86400)
     last7 = [day_of(t - i * 86400) for i in range(7)]
     cov7 = sum(st["coverage"].get(d, 0) for d in last7)
@@ -175,7 +178,7 @@ def detail_rows(stats, st, t):
             if y > 0:
                 tr1 = round((s["mkt"] - y) / y * 100, 1)
         rows[k] = [s["min"], s["flr"], s["mkt"], s["qty"], s["n"], s["wall"], s["b10"], s["b50"], s["b200"],
-                   sold1, spd, sp7, avg7, tr1]
+                   sold1, spd, sp7, avg7, tr1, (curves or {}).get(it)]
     return rows, {"coverage7h": round(cov7, 1), "coverage24h": round(cov24, 1)}
 
 
@@ -200,6 +203,9 @@ def refresh_gamedata(cfg, state_dir, root, bnet, wanted, force=False, csv_dir=No
     recipes = store.load(f"{state_dir}/recipes.json") or []
     seed_recipes = store.load(f"{root}/seed/recipes.json") or {"recipes": []}
     age_h = (time.time() - gd.get("checked", 0)) / 3600
+    lines = sorted(gamedata.SKILL_LINES)
+    if gd.get("lines") != lines:
+        force = True
     if force or not recipes or age_h >= cfg.get("gamedata_refresh_hours", 24):
         try:
             kw = {"fetch": fetch} if fetch else {}
@@ -210,10 +216,12 @@ def refresh_gamedata(cfg, state_dir, root, bnet, wanted, force=False, csv_dir=No
                 all_names = {int(r["ID"]): r.get("Display_lang", "") for r in tables["ItemSparse"] if r.get("ID")}
                 wago_recipes = gamedata.recipes_from_wago(tables, all_names)
                 recipes = gamedata.merge_seed(wago_recipes, seed_recipes)
+                gamedata.link_recipe_items(recipes, all_names)
                 rel = relevant_items(recipes, cfg["_constants"])
                 items.update(gamedata.items_from_wago(tables, wanted | rel))
                 gd["build"] = build
                 gd["source"] = f"wago.tools wowf {build}"
+                gd["lines"] = lines
                 log(f"gamedata: {len(wago_recipes)} recipes from wago, {len(recipes)} after merging the seed")
             gd["checked"] = int(time.time())
         except Exception as e:  # network or format problems must not stop prices from updating
@@ -229,7 +237,7 @@ def refresh_gamedata(cfg, state_dir, root, bnet, wanted, force=False, csv_dir=No
     rel = relevant_items(recipes, cfg["_constants"])
     if bnet:
         try:
-            gamedata.fill_missing_items(bnet, items, wanted | rel, cfg.get("item_lookup_budget", 1500), log=log)
+            gamedata.fill_missing_items(bnet, items, wanted | rel, cfg.get("item_lookup_budget", 1500), log=log, first=wanted)
         except Exception as e:
             log(f"items: Battle.net item lookups failed ({e})")
     store.save(f"{state_dir}/gamedata.json", gd)
@@ -279,8 +287,8 @@ def main(argv=None, bnet=None, wago_fetch=None):
         changed.append(hid)
         lastmod[hid_s] = snap["lm"]
         if hcfg.get("detail"):
-            stats, st = update_sales(state, hid, snap, rel_ids)
-            rows, cov = detail_rows(stats, st, snap["ts"])
+            stats, st, curves = update_sales(state, hid, snap, rel_ids)
+            rows, cov = detail_rows(stats, st, snap["ts"], curves)
             store.save(f"{state}/prices/{hid}.json", {"house": hid, "snapshot": snap["ts"], "cols": DETAIL_COLS, "items": rows})
             store.save(f"{state}/history/{hid}.json", {"house": hid, "snapshot": snap["ts"], "items": history_file(st, rel_ids)})
         else:
@@ -302,7 +310,8 @@ def main(argv=None, bnet=None, wago_fetch=None):
     gd_before = store.load(f"{state}/gamedata.json") or {}
     gd, items, recipes, icons, rel = refresh_gamedata(cfg, state, root, bnet, wanted, force=args.force_gamedata,
                                                       csv_dir=args.csv_dir, fetch=wago_fetch)
-    gamedata_changed = gd.get("build") != gd_before.get("build") or args.force_gamedata
+    gamedata_changed = (gd.get("build") != gd_before.get("build") or gd.get("lines") != gd_before.get("lines")
+                        or args.force_gamedata)
 
     if not changed and not gamedata_changed and not args.force_publish and os.path.exists(f"{state}/meta.json"):
         log("nothing new from Blizzard; skipping publish")

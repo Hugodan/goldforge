@@ -127,7 +127,8 @@ def write_csvs(d):
         "ItemSparse": "ID,Display_lang,OverallQualityID,ItemLevel,SellPrice,BuyPrice,RequiredLevel,Bonding,InventoryType\n"
                       "8170,Rugged Leather,1,50,500,2000,0,0,0\n2318,Light Leather,1,10,15,60,0,0,0\n"
                       "4304,Thick Leather,1,40,150,600,0,0,0\n8171,Rugged Hide,1,50,1000,4000,0,0,0\n"
-                      "15407,Cured Rugged Hide,1,55,1500,6000,0,0,0\n15409,Refined Deeprock Salt,1,45,250,1000,0,0,0\n",
+                      "15407,Cured Rugged Hide,1,55,1500,6000,0,0,0\n15409,Refined Deeprock Salt,1,45,250,1000,0,0,0\n"
+                      "77777,Pattern: Camp Chair,2,20,100,400,0,1,0\n",
         "Item": "ID,ClassID,SubclassID,InventoryType,IconFileDataID\n8170,7,6,0,1\n",
     }
     for k, v in files.items():
@@ -158,6 +159,9 @@ def test_end_to_end():
         recipes = json.load(open(os.path.join(out, "recipes.json")))["recipes"]
         names = {r["n"] for r in recipes}
         assert "Cured Rugged Hide" in names and "Camp Chair" in names
+        chair = next(r for r in recipes if r["n"] == "Camp Chair")
+        assert chair["pat"] == 77777 and chair["src"] == "item"
+        assert prices["cols"][-1] == "bq" and prices["items"]["8170"][-1][0] == 2000
         items = json.load(open(os.path.join(out, "items.json")))["items"]
         assert items["8170"][0] == "Rugged Leather" and items["8170"][3] == 7
         assert items["99999"][0] == "Fake 99999"          # filled from the Battle.net item API

@@ -112,6 +112,14 @@ def item_stats(units):
     }
 
 
+BUY_QUANTITIES = (5, 10, 20, 30, 50, 100, 200)
+
+
+def buy_curve(units):
+    """Average unit cost to buy each of BUY_QUANTITIES right now (None where too few are listed)."""
+    return [_buy_cost(units, q) for q in BUY_QUANTITIES]
+
+
 def estimate_sales(prev, curr):
     """Estimate units sold between two consecutive snapshots of one house.
 

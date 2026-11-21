@@ -25,6 +25,11 @@ export const DEFAULTS = {
   enchantSkill: 75,
   skinsPerHour: 80,
   bountifulRank: 5,
+  masterChefRank: 0,         // Legacy: Master Chef, extra cooking result chance per rank
+  barteringRank: 0,          // Legacy: Bartering, vendor gold prices -5% per rank
+  gourmandRank: 0,           // Legacy: Gourmand, longer food buffs (no gold effect)
+  reagentEconomy: false,     // Legacy: Reagent Economy, tier 1 camp features cost no reagents
+  faction: 'Alliance',
   onlyKnown: false,
   includeCamp: false,
   vendorOverrides: {},       // itemId -> true/false
@@ -88,6 +93,8 @@ export function importAddon(data) {
     vendor: { ...prev.vendor, ...(data.vendor || {}) },
     skins: mergeCounts(prev.skins, data.skins, 'npc'),
     de: mergeCounts(prev.de, data.de, 'item'),
+    recipeVendors: { ...(prev.recipeVendors || {}), ...(data.recipeVendors || {}) },
+    recipeDrops: { ...(prev.recipeDrops || {}), ...(data.recipeDrops || {}) },
     posts: [...new Map([...(prev.posts || []), ...asArray(data.posts)].map(p => [`${p.t}:${p.item}:${p.qty}`, p])).values()].slice(-200),
   };
   save();

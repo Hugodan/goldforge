@@ -1,5 +1,5 @@
 // One render function per tab, plus the recipe and item drawers.
-import { DB, item, price, money, moneyText, num, pct, esc, ago, clock, loadHistory, searchItems, idByName } from './data.js';
+import { DB, item, price, money, moneyText, num, pct, esc, ago, clock, loadHistory, searchItems, idByName, PROFESSIONS, profLabel } from './data.js';
 import * as P from './profile.js';
 import * as C from './calc.js';
 import { icon, itemLink, table, wireSort, sparkline, drawHistory, toast, trendTag } from './ui.js';
@@ -177,8 +177,10 @@ export function skinning(el, ctx) {
         ${table(specials, [
           { key: 'item', label: 'Target', render: x => `${itemLink(x.item)}<div class="small muted">${esc(x.mob)} · ${esc(x.zone)}</div>` },
           { key: 'unit', label: 'Each', num: true, render: x => money(x.unit) },
+          { key: 'rate', label: 'Skins/h', num: true, render: x => num(x.rate) },
           { key: 'perHour', label: 'Per hour', num: true, render: x => `<b>${money(x.perHour, { short: true })}</b>` },
         ], { sortKey: 'perHour', limit: 20 })}
+        <p class="small muted">Each special target has its own realistic skins per hour (Devilsaurs are rare, contested spawns), not your general skins-per-hour setting.</p>
       </div>
     </div>
     <div class="section"><h3>Your mobs <span class="muted small">(from the addon's skinning log)</span></h3>
@@ -522,7 +524,12 @@ export function setup(el, ctx) {
           <label class="check"><input type="checkbox" data-k="includeCamp" ${s.includeCamp ? 'checked' : ''}> Include camp objects</label>
           <label class="check"><input type="checkbox" data-k="enchanter" ${s.enchanter ? 'checked' : ''}> I have an enchanter (bank alt) for disenchanting</label>
           <label class="field">Skins per hour${numIn('skinsPerHour')}</label>
-          <label class="field">Bountiful Harvest rank${sel('bountifulRank', [0, 1, 2, 3, 4, 5].map(n => [n, n]))}</label>
+          <h3 style="margin-top:8px">Legacy talents</h3>
+          <label class="field">Bountiful Harvest rank (scarce materials +20% per rank)${sel('bountifulRank', [0, 1, 2, 3, 4, 5].map(n => [n, n]))}</label>
+          <label class="field">Master Chef rank (extra cooking result +10% per rank)${sel('masterChefRank', [0, 1, 2, 3, 4, 5].map(n => [n, n]))}</label>
+          <label class="field">Bartering rank (vendor prices −5% per rank)${sel('barteringRank', [0, 1, 2].map(n => [n, n]))}</label>
+          <label class="field">Gourmand rank (no price effect)${sel('gourmandRank', [0, 1, 2, 3].map(n => [n, n]))}</label>
+          <label class="check"><input type="checkbox" data-k="reagentEconomy" ${s.reagentEconomy ? 'checked' : ''}> Reagent Economy</label>
         </div>
         <div class="toolbar" style="margin-top:10px"><button class="btn ghost" id="reset">Reset to defaults</button></div>
       </div>
@@ -548,7 +555,7 @@ export function setup(el, ctx) {
     const k = inp.dataset.k;
     let val = inp.type === 'checkbox' ? inp.checked : inp.value;
     if (inp.type === 'number') val = (+inp.value || 0) / (+inp.dataset.scale || 1);
-    else if (['house', 'neutral', 'duration', 'minDeposit', 'bountifulRank'].includes(k)) val = +val;
+    else if (['house', 'neutral', 'duration', 'minDeposit', 'bountifulRank', 'masterChefRank', 'barteringRank', 'gourmandRank'].includes(k)) val = +val;
     P.setSetting(k, val);
     ctx.rerender(); toast('Saved');
   }));
@@ -609,8 +616,9 @@ export function recipeDrawer(body, spell, ctx) {
   body.innerHTML = `
     <div style="display:flex;gap:14px;align-items:center;margin-right:48px">${icon(r.i, 'lg')}<div>
       <h2 class="${'q-' + ['poor','common','uncommon','rare','epic','legendary'][prod.q]}" style="color:inherit">${esc(prod.name)}</h2>
-      <div class="small muted">Leatherworking · learn ${r.l > 1 ? r.l : '?'} · yellow ${r.y || '?'} · grey ${r.g || '?'} · ${r.src === 'item' ? `pattern${r.patn ? `: ${esc(r.patn)}` : ''}` : esc(r.src || 'trainer')}</div>
+      <div class="small muted">${profLabel(r.p)} · learn ${r.l > 1 ? r.l : '?'} · yellow ${r.y || '?'} · grey ${r.g || '?'}${ev.chef ? ` · Master Chef: ${num(ev.makes, 2)} per craft` : ''}</div>
       <div class="small">${recipeTags(ev)}</div></div></div>
+    ${learnedFrom(r)}
     <div class="toolbar section"><label class="field">Crafts<input id="crafts" type="number" min="1" max="500" value="${crafts}" style="width:110px"></label>
       <div class="stat"><div class="label">Profit</div><div class="val">${profitCell(ev.profit === null ? null : ev.profit * crafts)}</div></div>
       <div class="stat"><div class="label">Margin</div><div class="val">${pct(ev.margin)}</div></div>
@@ -647,6 +655,25 @@ export function recipeDrawer(body, spell, ctx) {
     catch (_) { toast('Copy blocked by the browser'); }
   });
   loadHistory(s.house).then(h => drawHistory(body.querySelector('#hist'), h[r.i]));
+}
+
+function learnedFrom(r) {
+  const src = C.recipeSource(r);
+  const pat = r.pat ? item(r.pat) : null;
+  const pp = r.pat ? price(S().house, r.pat) : null;
+  let detail = '';
+  if (src.vendors?.length) detail = src.vendors.map(v => `<li>${esc(v.name)}${v.title ? ` <span class="muted">&lt;${esc(v.title)}&gt;</span>` : ''}, ${esc(v.zone || '?')} ${v.ok ? '' : '<span class="tag warn">other faction</span>'}${pat?.buy ? ` · ${moneyText(pat.buy)}` : ''}</li>`).join('');
+  else if (src.drops) detail = src.drops.count > 12
+    ? `<li>World drop: ${src.drops.count} kinds of mob, level ${src.drops.lv[0]}–${src.drops.lv[1]}. Most in ${src.drops.zones.map(z => esc(z[0])).join(', ')}</li>`
+    : src.drops.npcs.map(n => `<li>${esc(n.name)}, ${esc(n.zone || '?')} (level ${n.lv}${n.rank === 3 ? ', boss' : n.rank === 4 || n.rank === 2 ? ', rare' : ''})</li>`).join('');
+  else if (src.objects?.length) detail = src.objects.map(o => `<li>${esc(o.name)}, ${esc(o.zone)}</li>`).join('');
+  else if (src.quests?.length) detail = src.quests.map(q => `<li>${esc(q.name)} (level ${q.lv})</li>`).join('');
+  return `<div class="section"><h3>Learned from</h3>
+    <p><span class="tag gold">${esc(src.type)}</span> ${esc(src.text)}</p>
+    ${detail ? `<ul class="small">${detail}</ul>` : ''}
+    ${src.seen?.length ? `<p class="small good">Seen by you: ${esc(src.seen.join(' · '))}</p>` : ''}
+    ${pat ? `<p class="small">${itemLink(r.pat)} ${pp ? `· on your AH for ${money(pp.flr ?? pp.min)} (${num(pp.qty)} listed)` : '· not on your AH right now'}${pat.bind === 1 ? ' · <span class="tag warn">binds when picked up</span>' : ''} · <a href="${C.wowheadItem(r.pat)}" target="_blank" rel="noopener">Wowhead</a></p>` : ''}
+  </div>`;
 }
 
 export function itemDrawer(body, id, ctx) {
@@ -686,4 +713,172 @@ export function itemDrawer(body, id, ctx) {
       { key: 'margin', label: 'Margin', num: true, render: e => pct(e.margin) },
     ], { sortKey: 'profit', stack: false, rowAttr: e => `class="click" data-recipe="${e.r.s}"` })}</div>` : ''}`;
   loadHistory(s.house).then(h => drawHistory(body.querySelector('#hist'), h[id]));
+}
+
+
+// ============================================================================= RECIPES (all professions)
+export function recipes(el, ctx) {
+  const s = S();
+  const v = view('recipes');
+  v.prof ??= 'all'; v.type ??= 'all'; v.q ??= ''; v.sortKey ??= 'skill'; v.asc ??= true; v.mine ??= false;
+  C.resetMemo();
+  const known = P.knownRecipes();
+  let rows = DB.recipes.filter(r => (v.prof === 'all' || r.p === v.prof) && (v.prof !== 'all' || r.p !== 'skinning'));
+  if (v.q) { const q = v.q.toLowerCase(); rows = rows.filter(r => r.n.toLowerCase().includes(q) || item(r.i).name.toLowerCase().includes(q)); }
+  rows = rows.map(r => ({ r, src: C.recipeSource(r), known: C.recipeKnown(r) }));
+  if (v.type !== 'all') rows = rows.filter(x => v.type === 'Drop' ? /Drop/.test(x.src.type) : x.src.type === v.type);
+  if (v.mine) rows = rows.filter(x => x.known !== false);
+  const limit = 400;
+  const shown = rows.slice(0, 2000);
+  // profit only for what is shown (keeps it fast)
+  for (const x of shown) x.ev = C.evaluateRecipe(x.r);
+  const types = ['all', 'Trainer', 'Vendor', 'Drop', 'Chest', 'Quest', 'New pattern', 'Starter'];
+  const counts = {}; for (const r of DB.recipes) counts[r.p] = (counts[r.p] || 0) + 1;
+  el.innerHTML = `
+    <div class="vhead"><div><h2>Recipes</h2>
+      <p>${num(DB.recipes.length)} recipes across every profession, with where each one is learned and what crafting it earns at current prices. Classic vendors, drops and quests come from QuestieDB. Forever-only patterns aren't in any open database yet: they link to Wowhead, and the addon records the vendors and drops you actually see.</p></div></div>
+    <div class="toolbar">
+      <label class="field">Profession<select id="rp"><option value="all">All crafting professions</option>${PROFESSIONS.filter(p => counts[p]).map(p => `<option value="${p}" ${v.prof === p ? 'selected' : ''}>${profLabel(p)} (${counts[p]})</option>`).join('')}</select></label>
+      <label class="field">Learned from<select id="rt">${types.map(t => `<option value="${t}" ${v.type === t ? 'selected' : ''}>${t === 'all' ? 'Anywhere' : t}</option>`).join('')}</select></label>
+      <label class="field" style="flex:1 1 220px">Search<input type="search" id="rq" value="${esc(v.q)}" placeholder="Recipe or item name"></label>
+      ${known ? `<label class="check"><input type="checkbox" id="rm" ${v.mine ? 'checked' : ''}> Hide recipes I don't know</label>` : ''}
+    </div>
+    ${table(shown, [
+      { key: 'name', label: 'Recipe', sort: x => item(x.r.i).name, render: x => `${itemLink(x.r.i)}<div class="small"><span class="tag">${profLabel(x.r.p)}</span>${x.r.new ? ' <span class="tag gold">new in Forever</span>' : ''}${x.known === true ? ' <span class="tag good">known</span>' : ''}</div>` },
+      { key: 'skill', label: 'Skill', num: true, sort: x => (x.r.l > 1 ? x.r.l : x.r.y), render: x => `${x.r.l > 1 ? x.r.l : '—'}<span class="muted small"> / ${x.r.y || '?'}</span>` },
+      { key: 'type', label: 'Learned from', sort: x => x.src.type, render: x => `<span class="tag ${x.src.type === 'Trainer' || x.src.type === 'Starter' ? '' : x.src.type === 'New pattern' ? 'warn' : 'gold'}">${esc(x.src.type)}</span><div class="small muted" style="max-width:44ch">${esc(x.src.text)}</div>` },
+      { key: 'pat', label: 'Pattern on AH', num: true, sort: x => x.r.pat ? price(s.house, x.r.pat)?.flr : null, render: x => { const p = x.r.pat ? price(s.house, x.r.pat) : null; return p ? `${money(p.flr ?? p.min)}<div class="small muted">${num(p.qty)} listed${C.thinMarket(x.r.pat) ? ' · <span class="warn">thin</span>' : ''}</div>` : '<span class="na">—</span>'; } },
+      { key: 'profit', label: 'Craft profit', num: true, sort: x => x.ev?.profit, render: x => x.ev && x.ev.profit !== null ? `${profitCell(x.ev.profit)}<div class="small">${exitTag(x.ev.best)}</div>` : '<span class="na">—</span>' },
+    ], { sortKey: v.sortKey, asc: v.asc, limit, rowAttr: x => `class="click${x.known === false ? ' dimrow' : ''}" data-recipe="${x.r.s}"` })}`;
+  el.querySelector('#rp').addEventListener('change', e => { v.prof = e.target.value; ctx.rerender(); });
+  el.querySelector('#rt').addEventListener('change', e => { v.type = e.target.value; ctx.rerender(); });
+  el.querySelector('#rm')?.addEventListener('change', e => { v.mine = e.target.checked; ctx.rerender(); });
+  const q = el.querySelector('#rq');
+  q.addEventListener('input', () => { v.q = q.value; clearTimeout(v._t); v._t = setTimeout(() => { ctx.rerender(); document.getElementById('rq')?.focus(); }, 300); });
+  wireSort(el, v, ctx.rerender);
+}
+
+// ============================================================================= RECIPE FARM
+export function recipefarm(el, ctx) {
+  const s = S();
+  const v = view('rfarm');
+  v.prof ??= 'all'; v.sortKey ??= 'net'; v.minLv ??= 0;
+  let rows = C.recipeFarmRows().filter(x => v.prof === 'all' || x.prof === v.prof);
+  const drops = rows.filter(x => !x.bop && x.net && (x.src.drops || x.src.objects.length || x.src.seen.length) && !x.src.vendors.length)
+    .filter(x => !x.src.drops || x.src.drops.lv[1] >= v.minLv);
+  const flips = rows.filter(x => x.flip !== null && x.flip > 0 && x.p).sort((a, b) => b.flip - a.flip);
+  const unknown = rows.filter(x => !x.bop && x.net && x.src.type === 'New pattern' && x.p);
+  const where = x => {
+    const o = x.src;
+    if (o.drops) return o.drops.count > 12
+      ? `World drop · lvl ${o.drops.lv[0]}–${o.drops.lv[1]} · ${o.drops.zones.slice(0, 2).map(z => esc(z[0])).join(', ')}`
+      : o.drops.npcs.slice(0, 3).map(n => `${esc(n.name)} <span class="muted">(${esc(n.zone || '?')}, ${n.lv}${n.rank === 3 ? ' boss' : n.rank === 4 || n.rank === 2 ? ' rare' : ''})</span>`).join('<br>');
+    if (o.objects.length) return `${[...new Set(o.objects.map(b => esc(b.name)))].slice(0, 2).join(', ')} <span class="muted">(${esc(o.objects[0].zone)})</span>`;
+    return esc(o.seen.join(' · '));
+  };
+  const profOpts = PROFESSIONS.filter(p => p !== 'skinning' && p !== 'mining');
+  el.innerHTML = `
+    <div class="vhead"><div><h2>Recipe farm</h2>
+      <p>Recipe items for every profession that sell on your auction house: what to farm, which vendor recipes you can buy and resell, and Forever-only patterns already trading. Prices are what you keep after the cut and deposits. Recipes that bind when picked up are left out, because they can't be sold.</p></div></div>
+    <div class="toolbar">
+      <label class="field">Profession<select id="fp"><option value="all">All</option>${profOpts.map(p => `<option value="${p}" ${v.prof === p ? 'selected' : ''}>${profLabel(p)}</option>`).join('')}</select></label>
+      <label class="field">Mobs at least level<select id="fl">${[0, 30, 45, 55].map(n => `<option ${n === v.minLv ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+      <p class="small muted" style="flex:1 1 300px">Drops with few droppers (named rares, bosses) can be farmed on purpose. World drops come from any mob in their level range, so farm the zone you'd be in anyway and keep the ones listed here.</p>
+    </div>
+    <div class="section"><h3>Drops worth farming</h3>
+      ${table(drops, [
+        { key: 'id', label: 'Recipe item', sort: x => x.it.name, render: x => `${itemLink(x.id)}<div class="small"><span class="tag">${profLabel(x.prof) || '?'}</span></div>` },
+        { key: 'net', label: 'You keep', num: true, render: x => `${money(x.net)}${C.thinMarket(x.id) ? '<div class="small warn" title="2 or fewer listings and no measured sales: this is an asking price, not a market price">thin market</div>' : ''}` },
+        { key: 'qty', label: 'Listed', num: true, sort: x => x.p?.qty, render: x => num(x.p?.qty) },
+        { key: 'spd', label: 'Sells/day', num: true, sort: x => x.p?.spd, render: x => num(x.p?.spd, 1) },
+        { key: 'drop', label: 'Where', nosort: true, render: where },
+        { key: 'n', label: 'Droppers', num: true, sort: x => x.src.drops?.count ?? 99, render: x => x.src.drops ? num(x.src.drops.count) : '' },
+      ], { sortKey: v.sortKey, asc: v.asc, limit: 150, rowAttr: x => `data-item="${x.id}" class="click"` })}
+    </div>
+    <div class="section"><h3>Vendor recipes to resell</h3>
+      <p class="small muted">Recipes sold by a vendor you can use that list on the AH for more than the vendor asks. Many are limited stock (one or two, restocking over time), so buy all and come back. ${s.barteringRank ? `Vendor prices include your ${s.barteringRank * 5}% Bartering discount.` : ''}</p>
+      ${table(flips, [
+        { key: 'id', label: 'Recipe item', sort: x => x.it.name, render: x => `${itemLink(x.id)}<div class="small"><span class="tag">${profLabel(x.prof) || '?'}</span></div>` },
+        { key: 'vend', label: 'Vendor price', num: true, render: x => money(x.vend) },
+        { key: 'net', label: 'You keep on AH', num: true, render: x => money(x.net) },
+        { key: 'flip', label: 'Profit', num: true, render: x => profitCell(x.flip) },
+        { key: 'who', label: 'Vendor', nosort: true, render: x => x.src.vendors.filter(w => w.ok).slice(0, 2).map(w => `${esc(w.name)} <span class="muted">(${esc(w.zone || '?')})</span>`).join('<br>') },
+        { key: 'qty', label: 'Listed', num: true, sort: x => x.p?.qty, render: x => num(x.p?.qty) },
+      ], { sortKey: 'flip', limit: 100, rowAttr: x => `data-item="${x.id}" class="click"` })}
+    </div>
+    <div class="section"><h3>Forever-only patterns on the AH</h3>
+      <p class="small muted">New in Forever, so no open database lists their source yet. Check Wowhead, or let the addon record them as you play.</p>
+      ${table(unknown, [
+        { key: 'id', label: 'Recipe item', sort: x => x.it.name, render: x => `${itemLink(x.id)} <a class="small" href="${C.wowheadItem(x.id)}" target="_blank" rel="noopener">Wowhead</a>` },
+        { key: 'net', label: 'You keep', num: true, render: x => money(x.net) },
+        { key: 'qty', label: 'Listed', num: true, sort: x => x.p?.qty, render: x => num(x.p?.qty) },
+        { key: 'spd', label: 'Sells/day', num: true, sort: x => x.p?.spd, render: x => num(x.p?.spd, 1) },
+      ], { sortKey: 'net', limit: 100 })}
+    </div>`;
+  el.querySelector('#fp').addEventListener('change', e => { v.prof = e.target.value; ctx.rerender(); });
+  el.querySelector('#fl').addEventListener('change', e => { v.minLv = +e.target.value; ctx.rerender(); });
+  wireSort(el.querySelector('.section'), v, ctx.rerender);
+}
+
+// ============================================================================= COOKING
+export function cooking(el, ctx) {
+  const s = S();
+  const v = view('cook');
+  v.filter ??= 'profitable'; v.q ??= '';
+  const L = DB.constants.legacy || {};
+  C.resetMemo();
+  let rows = DB.recipes.filter(r => r.p === 'cooking' && (!r.camp || s.includeCamp)).map(r => C.evaluateRecipe(r));
+  if (v.q) { const q = v.q.toLowerCase(); rows = rows.filter(x => item(x.r.i).name.toLowerCase().includes(q)); }
+  if (v.filter === 'profitable') rows = rows.filter(x => x.profit !== null && x.profit > 0);
+  if (v.filter === 'known') rows = rows.filter(x => x.known === true);
+  v.sortKey ??= rows.some(x => x.daily) ? 'daily' : 'profit';
+  const meats = [...new Set(DB.recipes.filter(r => r.p === 'cooking').flatMap(r => r.r.map(x => x[0])))]
+    .filter(id => !C.vendorPrice(id) && price(s.house, id)).map(id => ({ id, ...C.rawVersusCraft(id) }))
+    .filter(x => x.best && x.raw !== null).sort((a, b) => (b.best.perLeather - b.raw) - (a.best.perLeather - a.raw)).slice(0, 25);
+  const chefPct = (s.masterChefRank || 0) * (L.masterChefPerRank ?? 0.1);
+  el.innerHTML = `
+    <div class="vhead"><div><h2>Cooking</h2>
+      <p>Every Cooking recipe priced from your auction house, including Forever's XP and stat foods. Master Chef's extra results are counted in the output, and Bartering lowers the price of vendor spices.</p></div></div>
+    <div class="panel studs" style="margin-bottom:16px"><h3>Your Legacy talents</h3>
+      <div class="grid g4">
+        <label class="field">Master Chef (extra result chance)<select data-k="masterChefRank">${[...Array((L.masterChefRanks ?? 5) + 1).keys()].map(n => `<option value="${n}" ${n === s.masterChefRank ? 'selected' : ''}>${n}/${L.masterChefRanks ?? 5}: ${Math.round(n * (L.masterChefPerRank ?? 0.1) * 100)}%</option>`).join('')}</select></label>
+        <label class="field">Bartering (vendor prices)<select data-k="barteringRank">${[0, 1, 2].map(n => `<option value="${n}" ${n === s.barteringRank ? 'selected' : ''}>${n}/2: ${n ? `−${n * 5}%` : 'none'}</option>`).join('')}</select></label>
+        <label class="field">Gourmand (food buffs last longer)<select data-k="gourmandRank">${[0, 1, 2, 3].map(n => `<option value="${n}" ${n === s.gourmandRank ? 'selected' : ''}>${n}/3</option>`).join('')}</select></label>
+        <label class="check"><input type="checkbox" data-k="reagentEconomy" ${s.reagentEconomy ? 'checked' : ''}> Reagent Economy (tier 1 camp features cost nothing)</label>
+      </div>
+      <p class="small muted">Master Chef is shown here as 10% per rank, up to 50%. Guides disagree on the exact numbers (some say 30% at max), so set it to what your tooltip says. Gourmand doesn't change prices. It makes buff food worth more to you, not to buyers.</p>
+    </div>
+    <div class="toolbar">
+      <input type="search" id="cq" placeholder="Filter dishes…" value="${esc(v.q)}" style="flex:1 1 220px">
+      <div class="seg" role="group" aria-label="Show">${[['profitable', 'Profitable'], ['known', 'Known'], ['all', 'All']].map(([k, l]) => `<button aria-pressed="${v.filter === k}" data-f="${k}">${l}</button>`).join('')}</div>
+    </div>
+    ${table(rows, [
+      { key: 'name', label: 'Dish', sort: x => item(x.r.i).name, render: x => `${itemLink(x.r.i)}<div class="small">${x.r.xp ? `<span class="tag gold">+${x.r.xp}% XP</span> ` : ''}${x.r.buff ? `<span class="muted">${esc(x.r.buff)}</span>` : ''}${x.known === true ? ' <span class="tag good">known</span>' : ''}</div>` },
+      { key: 'skill', label: 'Skill', num: true, sort: x => (x.r.l > 1 ? x.r.l : x.r.y), render: x => `${x.r.l > 1 ? x.r.l : '—'}<span class="muted small"> / ${x.r.y || '?'}</span>` },
+      { key: 'cost', label: 'Ingredients', num: true, render: x => money(x.cost) },
+      { key: 'makes', label: 'Makes', num: true, render: x => num(x.makes, 2) },
+      { key: 'exit', label: 'Best exit', sort: x => x.best?.value, render: x => x.best ? `${exitTag(x.best)} ${money(x.best.value)} each` : exitTag(null) },
+      { key: 'profit', label: 'Profit/craft', num: true, render: x => profitCell(x.profit) },
+      { key: 'margin', label: 'Margin', num: true, render: x => x.margin === null ? '—' : pct(x.margin) },
+      { key: 'spd', label: 'Sells/day', num: true, render: x => num(x.spd, 1) },
+      { key: 'daily', label: 'Gold/day', num: true, sort: x => x.daily ?? -1, render: x => x.daily ? money(x.daily, { short: true }) : '<span class="na">—</span>' },
+    ], { sortKey: v.sortKey, asc: v.asc, rowAttr: x => `class="click" data-recipe="${x.r.s}"` })}
+    <div class="section"><h3>Meat you loot: sell raw or cook it?</h3>
+      <p class="small muted">Ingredients you get from beasts while skinning. Cooking value per ingredient includes Master Chef (${Math.round(chefPct * 100)}%) and the other ingredients' cost.</p>
+      ${table(meats, [
+        { key: 'id', label: 'Ingredient', sort: x => item(x.id).name, render: x => itemLink(x.id) },
+        { key: 'raw', label: 'Sell raw', num: true, render: x => money(x.raw) },
+        { key: 'cook', label: 'Cooked, per ingredient', num: true, sort: x => x.best.perLeather, render: x => `${money(x.best.perLeather)}<div class="small"><a href="#" data-recipe="${x.best.r.s}">${esc(item(x.best.r.i).name)}</a></div>` },
+        { key: 'gain', label: 'Gain', num: true, sort: x => x.best.perLeather - x.raw, render: x => profitCell(x.best.perLeather - x.raw) },
+      ], { sortKey: 'gain', limit: 25 })}
+    </div>`;
+  el.querySelectorAll('[data-k]').forEach(inp => inp.addEventListener('change', () => {
+    const k = inp.dataset.k;
+    P.setSetting(k, inp.type === 'checkbox' ? inp.checked : +inp.value);
+    ctx.rerender();
+  }));
+  const q = el.querySelector('#cq');
+  q.addEventListener('input', () => { v.q = q.value; clearTimeout(v._t); v._t = setTimeout(() => { ctx.rerender(); document.getElementById('cq')?.focus(); }, 250); });
+  el.querySelectorAll('[data-f]').forEach(b => b.addEventListener('click', () => { v.filter = b.dataset.f; ctx.rerender(); }));
+  wireSort(el, v, ctx.rerender);
 }
