@@ -196,11 +196,15 @@ def icon_from_media(body):
     return None
 
 
-def fill_missing_items(bnet, items, wanted, budget, log=print, first=None):
+def fill_missing_items(bnet, items, wanted, budget, log=print, first=None, notfound=None):
     """Look up items wago could not name through the Battle.net item API (bounded per run).
-    Items in `first` (e.g. what is on the auction house right now) are looked up before the rest."""
+    Items in `first` (e.g. what is on the auction house right now) are looked up before the rest.
+    `notfound` ({id: unix time}) holds items the API answered 404 for; they are skipped and new
+    404s are added, so every run doesn't spend minutes asking about the same unknown items."""
     first = first or set()
-    missing = sorted((i for i in wanted if i not in items), key=lambda i: (i not in first, i))
+    notfound = notfound if notfound is not None else {}
+    missing = sorted((i for i in wanted if i not in items and str(i) not in notfound),
+                     key=lambda i: (i not in first, i))
     done = 0
     for iid in missing[:budget]:
         status, _h, body = bnet.item(iid)
@@ -208,6 +212,8 @@ def fill_missing_items(bnet, items, wanted, budget, log=print, first=None):
             row = item_from_bnet(body)
             if row:
                 items[iid] = row
+        elif status == 404:
+            notfound[str(iid)] = int(time.time())
         done += 1
     if missing:
         log(f"items: looked up {done} of {len(missing)} unnamed items through the Battle.net API")
@@ -218,9 +224,12 @@ def fill_icons(bnet, icons, wanted, budget, log=print):
     todo = [i for i in sorted(wanted) if str(i) not in icons or (icons[str(i)] and not str(icons[str(i)]).startswith("http"))]
     for iid in todo[:budget]:
         status, _h, body = bnet.item_media(iid)
-        icons[str(iid)] = icon_from_media(body) if status == 200 else ""
-        if status == 429:
-            time.sleep(1)
+        if status == 200:
+            icons[str(iid)] = icon_from_media(body)
+        elif status == 404:
+            icons[str(iid)] = ""          # no icon: don't ask again
+        elif status == 429:
+            time.sleep(1)                 # rate limited: try again next run
     if todo:
         log(f"icons: fetched {min(len(todo), budget)} of {len(todo)} missing icons")
     return icons

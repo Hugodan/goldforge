@@ -9,6 +9,10 @@ on:
     - cron: "26,41,56,11 * * * *"
   workflow_dispatch:
     inputs:
+      auto:
+        description: "Timer run: publish only when Blizzard has a new snapshot (set by an outside timer such as cron-job.org)"
+        type: boolean
+        default: false
       force_gamedata:
         description: "Re-read recipes and items from wago.tools now"
         type: boolean
@@ -65,6 +69,7 @@ jobs:
         env:
           BNET_CLIENT_ID: ${{ secrets.BNET_CLIENT_ID }}
           BNET_CLIENT_SECRET: ${{ secrets.BNET_CLIENT_SECRET }}
+          GF_TRIGGER: ${{ inputs.auto && 'timer' || github.event_name }}
         working-directory: collector
         run: |
           if [ -z "$BNET_CLIENT_ID" ] || [ -z "$BNET_CLIENT_SECRET" ]; then
@@ -72,7 +77,7 @@ jobs:
             exit 1
           fi
           ARGS="--config ../config.json --state ../state --out ../public/data"
-          if [ "${{ github.event_name }}" != "schedule" ]; then ARGS="$ARGS --force-publish"; fi
+          if [ "${{ github.event_name }}" != "schedule" ] && [ "${{ inputs.auto }}" != "true" ]; then ARGS="$ARGS --force-publish"; fi
           if [ "${{ inputs.force_gamedata }}" = "true" ]; then ARGS="$ARGS --force-gamedata"; fi
           python -m goldforge_collector.run $ARGS
 

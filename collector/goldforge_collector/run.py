@@ -239,10 +239,15 @@ def refresh_gamedata(cfg, state_dir, root, bnet, wanted, force=False, csv_dir=No
             items[int(k)] = [v.get("name", ""), v.get("q", 1), 0, v.get("cls", -1), -1, 0, 0, 0, 0, 0]
     rel = relevant_items(recipes, cfg["_constants"])
     if bnet:
+        nf_path = f"{state_dir}/items_notfound.json"
+        week_ago = time.time() - 7 * 86400
+        notfound = {k: v for k, v in (store.load(nf_path) or {}).items() if v > week_ago}
         try:
-            gamedata.fill_missing_items(bnet, items, wanted | rel, cfg.get("item_lookup_budget", 1500), log=log, first=wanted)
+            gamedata.fill_missing_items(bnet, items, wanted | rel, cfg.get("item_lookup_budget", 1500), log=log,
+                                        first=wanted, notfound=notfound)
         except Exception as e:
             log(f"items: Battle.net item lookups failed ({e})")
+        store.save(nf_path, notfound)
     store.save(f"{state_dir}/gamedata.json", gd)
     store.save(f"{state_dir}/items.json.gz", {str(k): v for k, v in items.items()})
     store.save(f"{state_dir}/recipes.json", recipes)
@@ -266,6 +271,7 @@ def main(argv=None, bnet=None, wago_fetch=None):
     ap.add_argument("--force-publish", action="store_true")
     ap.add_argument("--csv-dir", help="offline wago CSVs (tests)")
     args = ap.parse_args(argv)
+    started = time.time()
 
     root = os.path.dirname(os.path.abspath(args.config))
     cfg = store.load(args.config)
@@ -314,7 +320,7 @@ def main(argv=None, bnet=None, wago_fetch=None):
     gd, items, recipes, icons, rel = refresh_gamedata(cfg, state, root, bnet, wanted, force=args.force_gamedata,
                                                       csv_dir=args.csv_dir, fetch=wago_fetch)
     gamedata_changed = (gd.get("build") != gd_before.get("build") or gd.get("lines") != gd_before.get("lines")
-                        or args.force_gamedata)
+                        or args.force_gamedata or len(recipes) != len(recipes_prev))
 
     if not changed and not gamedata_changed and not args.force_publish and os.path.exists(f"{state}/meta.json"):
         log("nothing new from Blizzard; skipping publish")
@@ -339,7 +345,8 @@ def main(argv=None, bnet=None, wago_fetch=None):
             "namespace": f"dynamic-forever-{cfg.get('region', 'eu')}", "ruleset": cfg.get("ruleset", 2),
             "primary": cfg.get("primary"), "neutral": cfg.get("neutral"), "houses": house_meta,
             "gamedata": {"build": gd.get("build"), "source": gd.get("source", "seed")},
-            "apiRequests": bnet.requests}
+            "apiRequests": bnet.requests, "runSeconds": round(time.time() - started),
+            "trigger": os.environ.get("GF_TRIGGER") or os.environ.get("GITHUB_EVENT_NAME", "local")}
     store.save(f"{state}/meta.json", meta)
     store.save(f"{out}/meta.json", meta, pretty=True)
     log(f"published {len(changed)} changed house(s); {bnet.requests} API requests")

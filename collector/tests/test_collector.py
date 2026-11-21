@@ -202,3 +202,20 @@ def test_seed_merge_keeps_learn_source():
     a = next(r for r in merged if r["s"] == 1)
     assert a["pat"] == 77 and a["l"] == 150
     assert any(r["s"] == 9 for r in merged)
+
+
+def test_unknown_items_are_not_looked_up_again():
+    from goldforge_collector import gamedata
+
+    class Stub:
+        calls = []
+        def item(self, iid):
+            self.calls.append(iid)
+            return (200, {}, {"name": "Known", "quality": {"type": "COMMON"}}) if iid == 1 else (404, {}, None)
+
+    stub, items, nf = Stub(), {}, {}
+    gamedata.fill_missing_items(stub, items, {1, 2, 3}, 50, log=lambda *_: None, notfound=nf)
+    assert set(nf) == {"2", "3"} and stub.calls == [1, 2, 3]
+    stub.calls.clear()
+    gamedata.fill_missing_items(stub, items, {1, 2, 3}, 50, log=lambda *_: None, notfound=nf)
+    assert stub.calls == []
