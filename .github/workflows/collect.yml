@@ -33,7 +33,11 @@ jobs:
     outputs:
       changed: ${{ steps.run.outputs.changed }}
     steps:
+      # Always run the newest code on main. "Re-run jobs" on an old run would otherwise
+      # collect with that run's old code and deploy its old site over the current one.
       - uses: actions/checkout@v4
+        with:
+          ref: main
 
       - uses: actions/setup-python@v5
         with:
@@ -89,7 +93,7 @@ jobs:
           touch public/.nojekyll
           # Version every script and stylesheet URL with the commit id, so a browser
           # never mixes a new page with code it cached from an older deploy.
-          V="${GITHUB_SHA::10}"
+          V="$(git rev-parse --short=10 HEAD)"
           echo "$V" > public/version.txt
           sed -i "s#__BUILD__#$V#" public/js/app.js
           sed -i -E "s#from '(\./[a-z]+\.js)'#from '\1?v=$V'#g" public/js/*.js
