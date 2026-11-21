@@ -88,6 +88,7 @@ export function importAddon(data) {
     vendor: { ...prev.vendor, ...(data.vendor || {}) },
     skins: mergeCounts(prev.skins, data.skins, 'npc'),
     de: mergeCounts(prev.de, data.de, 'item'),
+    posts: [...new Map([...(prev.posts || []), ...asArray(data.posts)].map(p => [`${p.t}:${p.item}:${p.qty}`, p])).values()].slice(-200),
   };
   save();
   return state.addon;

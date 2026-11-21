@@ -31,8 +31,10 @@ local function buildExport()
     for mid, c in pairs(d.out or {}) do out[tostring(mid)] = c end
     de[tostring(id)] = { n = d.n, out = out }
   end
+  local posts = {}
+  for i = math.max(1, #DB.posts - 99), #DB.posts do posts[#posts + 1] = DB.posts[i] end
   local data = { v = 1, t = t, addon = "1.0.0", chars = chars, ledger = DB.ledger, prices = prices,
-                 vendor = vendor, skins = skins, de = de }
+                 vendor = vendor, skins = skins, de = de, posts = posts }
   return "GF1:" .. ns.ToJSON(data)
 end
 

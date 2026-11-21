@@ -454,7 +454,7 @@ local handlers = {
       if paid > 0 then
         pendingPost.deposit = paid / math.max(1, pendingPost.qty)
         DB.posts[#DB.posts + 1] = { item = pendingPost.item, qty = pendingPost.qty, price = pendingPost.price,
-                                    deposit = pendingPost.deposit, t = now() }
+                                    deposit = pendingPost.deposit, duration = pendingPost.duration, t = now() }
         while #DB.posts > 300 do table.remove(DB.posts, 1) end
       end
       pendingPost = nil

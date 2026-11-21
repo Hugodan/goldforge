@@ -286,7 +286,7 @@ export function neutral(el, ctx) {
         { key: 'na', label: 'Sells/day (Alliance)', num: true, render: g => num(g.na, 1) },
         { key: 'nn', label: 'Sells/day (neutral)', num: true, render: g => num(g.nn, 1) },
         { key: 'w', label: 'Sell on', nosort: true, render: g => g.a === null && g.n === null ? '—' : (g.n ?? -1) > (g.a ?? -1)
-          ? `<span class="tag gold">Neutral</span>${g.nn !== undefined && g.nn !== null && g.nn < 2 ? ' <span class="tag warn">slow market</span>' : ''}` : '<span class="tag good">Alliance</span>' },
+          ? `<span class="tag gold">Neutral</span>${g.nn === undefined || g.nn === null ? ' <span class="tag warn">unproven</span>' : g.nn < 2 ? ' <span class="tag warn">slow market</span>' : ''}` : '<span class="tag good">Alliance</span>' },
       ], { sortKey: 'a', limit: 30 })}
     </div>
     <div class="toolbar">
@@ -505,6 +505,13 @@ export function setup(el, ctx) {
           <label class="field">Gear sell-through (%)${numIn('sellThroughGear', 1, 100)}</label>
           <label class="field">Share of daily sales you win (%)${numIn('marketShare', 1, 100)}</label>
         </div>
+        ${(() => {
+          const posts = (a?.posts || []).filter(p => p.item && p.deposit > 0 && item(p.item).sell > 0);
+          if (!posts.length) return '<p class="small muted">Blizzard has not published Forever\'s deposit formula. Post a few auctions with the addon installed and import, and Goldforge measures it from what you actually paid.</p>';
+          const r = posts.map(p => p.deposit / item(p.item).sell).sort((x, y) => x - y);
+          const med = r[Math.floor(r.length / 2)];
+          return `<div class="note">Measured from your last ${posts.length} posts: deposit ≈ <b>${pct(med, 1)}</b> of vendor price per unit. <button class="btn ghost" id="useDep" data-v="${med}">Use this for ${s.duration} h auctions</button></div>`;
+        })()}
         <p class="small muted">Sell-through is the share of listings that sell before they expire. Every failed listing loses its deposit, so a low sell-through raises the real cost of selling.</p>
       </div>
       <div class="panel"><h3>Materials and crafting</h3>
@@ -546,6 +553,7 @@ export function setup(el, ctx) {
     ctx.rerender(); toast('Saved');
   }));
   el.querySelector('#dp').addEventListener('change', e => { P.setSetting('depositPct', { ...s.depositPct, [s.duration]: (+e.target.value || 0) / 100 }); ctx.rerender(); });
+  el.querySelector('#useDep')?.addEventListener('click', e => { P.setSetting('depositPct', { ...s.depositPct, [s.duration]: +e.target.dataset.v }); ctx.rerender(); toast('Deposit rate updated'); });
   el.querySelector('#reset').addEventListener('click', () => { P.resetSettings(); ctx.rerender(); toast('Settings reset'); });
   el.querySelector('#doImp').addEventListener('click', () => {
     try {
