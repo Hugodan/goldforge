@@ -1,0 +1,16 @@
+{
+  "region": "eu",
+  "ruleset": 2,
+  "primary": 111,
+  "neutral": 117,
+  "houses": {
+    "111": {"label": "EU Normal · Alliance", "faction": "Alliance", "detail": true, "note": "Inferred from the house id groups (EU Normal Horde = 114 is confirmed). Verify in the app's House check."},
+    "117": {"label": "EU Normal · Blackwater (neutral)", "faction": "Neutral", "detail": true, "note": "Gadgetzan / Booty Bay / Everlook: 15% cut, 5x deposit."},
+    "110": {"label": "EU PvP · Alliance", "faction": "Alliance", "detail": false},
+    "119": {"label": "EU Alliance (group 4)", "faction": "Alliance", "detail": false},
+    "123": {"label": "EU Alliance (group 5)", "faction": "Alliance", "detail": false}
+  },
+  "gamedata_refresh_hours": 24,
+  "item_lookup_budget": 1500,
+  "icon_budget": 1200
+}
