@@ -1,12 +1,12 @@
 name: Collect prices
 
-# Blizzard refreshes each WoW Forever auction house about once an hour, each at its own minute.
-# Checking every 15 minutes with If-Modified-Since catches a new snapshot quickly and costs a
-# handful of tiny 304 requests when nothing changed. GitHub may start scheduled runs a few
-# minutes late; that only delays, never skips, a snapshot.
+# Blizzard refreshes each WoW Forever auction house about once an hour, each at its own minute
+# (the EU houses land at about :22-:23 past the hour). Checking at :26 catches that snapshot
+# ~3 minutes after it appears; the other checks are cheap If-Modified-Since retries (HTTP 304)
+# in case Blizzard is late. GitHub may start scheduled runs a few minutes late.
 on:
   schedule:
-    - cron: "7,22,37,52 * * * *"
+    - cron: "26,41,56,11 * * * *"
   workflow_dispatch:
     inputs:
       force_gamedata:

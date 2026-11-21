@@ -33,9 +33,9 @@ In-game Goldforge addon ──/gf export──▶ paste into the app (recipes, b
   been confirmed by matching in-game scans, and the IDs come in Alliance/Horde/Blackwater groups). Its
   neutral Blackwater house is #117. Check it under **Settings → House check**. With the addon, searching a
   few commodities at the AH and importing does the check automatically.
-* **"Live".** Blizzard publishes each house about once an hour. The collector checks every 15 minutes
-  and publishes within minutes of a new snapshot. The app reloads new prices by itself. The header shows
-  the snapshot's age.
+* **"Live".** Blizzard publishes each house about once an hour, at about :23 past the hour for the EU
+  houses. The collector checks at :26 (then :41, :56 and :11 as cheap retries) and deploys a couple of
+  minutes later. The app reloads new prices by itself every 4 minutes. The header shows the snapshot's age.
 * **Sales per day** are estimated by comparing consecutive snapshots. A listing that vanished with lots of
   time left counts as sold. Listings that were cancelled and reposted don't count. Commodity listings
   priced above a surviving cheaper listing can't have been bought, so they don't count either. It needs
