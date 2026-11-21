@@ -204,7 +204,9 @@ def refresh_gamedata(cfg, state_dir, root, bnet, wanted, force=False, csv_dir=No
     seed_recipes = store.load(f"{root}/seed/recipes.json") or {"recipes": []}
     age_h = (time.time() - gd.get("checked", 0)) / 3600
     lines = sorted(gamedata.SKILL_LINES)
-    if gd.get("lines") != lines:
+    # Rebuild when the profession list changed, or when recipes.json no longer matches what the
+    # last rebuild wrote (an older copy of the collector can overwrite it with a shorter list).
+    if gd.get("lines") != lines or gd.get("count") != len(recipes):
         force = True
     if force or not recipes or age_h >= cfg.get("gamedata_refresh_hours", 24):
         try:
@@ -224,6 +226,7 @@ def refresh_gamedata(cfg, state_dir, root, bnet, wanted, force=False, csv_dir=No
                 gd["lines"] = lines
                 log(f"gamedata: {len(wago_recipes)} recipes from wago, {len(recipes)} after merging the seed")
             gd["checked"] = int(time.time())
+            gd["count"] = len(recipes)
         except Exception as e:  # network or format problems must not stop prices from updating
             log(f"gamedata: wago.tools unavailable ({e}); keeping previous data")
             if not recipes:

@@ -183,6 +183,13 @@ def test_end_to_end():
         assert len(hist["items"]["8170"]["h"]) == 2
         meta = json.load(open(os.path.join(out, "meta.json")))
         assert meta["houses"]["111"]["snapshot"] == 1795253600
+
+        # an older collector overwrote recipes.json with a shorter list -> rebuilt on the next run
+        rpath = os.path.join(tmp, "state", "recipes.json")
+        full = len(json.load(open(rpath)))
+        json.dump(json.load(open(rpath))[:1], open(rpath, "w"))
+        assert run.main(args[:-1], bnet=Bnet("id", "secret", "eu", opener=fake)) == 0
+        assert len(json.load(open(rpath))) == full
     finally:
         shutil.rmtree(tmp)
 
