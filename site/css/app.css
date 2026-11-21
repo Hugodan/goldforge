@@ -70,6 +70,8 @@ p { margin: .4em 0; }
 .chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 8px var(--good); animation: pulse 2.4s infinite; }
 .chip .dot.stale { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
 .chip .dot.old { background: var(--bad); box-shadow: 0 0 8px var(--bad); animation: none; }
+.chip.update { cursor: pointer; font: inherit; color: #ffd100; border-color: #8a6a1c; background: rgba(90, 60, 10, .55); }
+.chip.update:hover { border-color: #ffd100; }
 .chip.alliance { border-color: #24427c; } .chip.alliance b { color: #8fb4ff; }
 @keyframes pulse { 50% { opacity: .35; } }
 @media (prefers-reduced-motion: reduce) { .chip .dot { animation: none; } }

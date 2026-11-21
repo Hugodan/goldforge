@@ -5,6 +5,10 @@ import { resetMemo } from './calc.js';
 import { bindTooltips, itemLink, toast } from './ui.js';
 import * as V from './views.js';
 
+// Replaced with the commit id when the site is deployed; the page compares it with
+// version.txt so a tab left open (or a cached copy) offers a reload after an update.
+const BUILD = '__BUILD__';
+let updateReady = false;
 const VIEWS = ['board', 'leatherworking', 'cooking', 'skinning', 'disenchant', 'recipes', 'recipefarm', 'neutral', 'bags', 'ledger', 'market', 'setup'];
 const el = document.getElementById('view');
 const drawer = document.getElementById('drawer');
@@ -51,8 +55,29 @@ function status() {
     <span class="chip alliance"><span class="dot ${dot}"></span><b>${esc(h?.label || `House ${s.house}`)}</b></span>
     <span class="chip" title="Blizzard snapshot time">Prices ${h?.snapshot ? `${clock(h.snapshot)} · ${ago(h.snapshot)}` : 'not loaded'}</span>
     ${next ? `<span class="chip">Next ≈ ${clock(next)}</span>` : ''}
-    ${n?.snapshot ? `<span class="chip">Neutral ${ago(n.snapshot)}</span>` : ''}`;
+    ${n?.snapshot ? `<span class="chip">Neutral ${ago(n.snapshot)}</span>` : ''}
+    ${updateReady ? '<button type="button" class="chip update" id="reloadApp">Goldforge updated · reload</button>' : ''}`;
 }
+
+async function checkVersion() {
+  if (BUILD.startsWith('__')) return;            // local preview
+  try {
+    const r = await fetch(`version.txt?t=${Date.now()}`, { cache: 'no-store' });
+    if (!r.ok) return;
+    const live = (await r.text()).trim();
+    if (live && live !== BUILD && !updateReady) {
+      // Nothing typed yet on a page that just opened with stale code: reload straight away.
+      if (performance.now() < 15000 && !sessionStorage.getItem('gf.reloaded.' + live)) {
+        sessionStorage.setItem('gf.reloaded.' + live, '1');
+        location.reload();
+        return;
+      }
+      updateReady = true;
+      status();
+    }
+  } catch (_) { /* offline */ }
+}
+document.addEventListener('click', e => { if (e.target.closest('#reloadApp')) location.reload(); });
 
 // ----------------------------------------------------------------------------- drawer
 function openDrawer(state, silent = false) {
@@ -112,6 +137,8 @@ async function boot() {
   addEventListener('hashchange', route);
   route();
   setInterval(status, 30000);
+  checkVersion();
+  setInterval(checkVersion, 4 * 60 * 1000);
   setInterval(async () => {
     try {
       if (await refreshMeta()) { render(false); toast(`New prices: ${clock(DB.meta.houses[S().house].snapshot)} snapshot`); }
