@@ -41,7 +41,7 @@ export function board(el, ctx) {
 
   const meter = top5.map(r => {
     const coins = Math.max(1, Math.round(r.daily / maxDaily * 11));
-    return `<div class="stack" title="${esc(r.r.n)}: ${moneyText(r.daily)} / day"><div class="coins">${'<i class="coin"></i>'.repeat(coins)}</div><div class="cap">${esc(item(r.r.i).name.split(' ').slice(-2).join(' '))}<br>${money(r.daily, { short: true })}</div></div>`;
+    return `<div class="stack" title="${esc(r.r.n)}: ${moneyText(r.daily)} / day"><div class="coins">${'<i class="coin"></i>'.repeat(coins)}</div><div class="cap"><span class="cn">${esc(item(r.r.i).name)}</span>${money(r.daily, { short: true })}</div></div>`;
   }).join('');
 
   const moves = [];

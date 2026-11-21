@@ -131,7 +131,8 @@ p { margin: .4em 0; }
 .coinmeter .coins { display: flex; flex-direction: column-reverse; justify-content: flex-start; align-items: center; gap: 2px; height: 112px; width: 100%; }
 .coinmeter .coin { width: min(46px, 90%); height: 9px; border-radius: 50%; background: linear-gradient(180deg, #fff1a6, #e2a92a 55%, #7a4f0e);
   box-shadow: 0 1px 0 #3a2608; }
-.coinmeter .cap { font-size: 12px; color: var(--muted); text-align: center; margin-top: 6px; line-height: 1.2; }
+.coinmeter .cap { font-size: 12px; color: var(--muted); text-align: center; margin-top: 6px; line-height: 1.25; width: 100%; }
+.coinmeter .cn { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .moves { display: grid; gap: 10px; }
 .move { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 12px;
   background: var(--inset); border: 1px solid var(--line); border-radius: 6px; cursor: pointer; color: inherit; text-align: left; font: inherit; width: 100%; }
